@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ECEFF2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1115" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Iron Log">
+<meta name="description" content="Weight training, Thai food calories and progress tracker">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<title>Iron Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>:root{color-scheme:light}
+
+/* Layout: one mobile column (max 560px), date header on top, tab bar fixed at bottom; IWF plate colours encode session (blue=upper, red=lower, green=cardio) and state */
+:root{
+  --bg:#ECEFF2; --surface:#FFFFFF; --sunk:#F4F6F8; --ink:#14181D; --muted:#5A6471; --line:#D3D9E0;
+  --accent:#2152C4; --accent-ink:#FFFFFF; --accent-soft:#E2E9FA;
+  --plate-red:#C42F27; --plate-blue:#2152C4; --plate-yellow:#D9A400; --plate-green:#1E8A4A; --plate-white:#E9EAE4; --plate-edge:#9AA2AC;
+  --good:#1E8A4A; --good-soft:#DFF1E6; --warn:#9A6A00; --warn-soft:#F8EDCC; --bad:#C42F27; --bad-soft:#F8E0DE;
+  --art-filter:none; --art-blend:multiply;
+  --display:"Barlow Condensed","IBM Plex Sans Thai",system-ui,sans-serif;
+  --body:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1115; --surface:#171B21; --sunk:#1E242B; --ink:#E7EBEF; --muted:#9AA4B0; --line:#2B323B;
+  --accent:#7097FF; --accent-ink:#0E1115; --accent-soft:#1D2840;
+  --plate-red:#FF6A5C; --plate-blue:#7097FF; --plate-yellow:#F0C232; --plate-green:#4CC27E; --plate-white:#D7D9D2; --plate-edge:#5D6670;
+  --good:#4CC27E; --good-soft:#16301F; --warn:#F0C232; --warn-soft:#352C10; --bad:#FF6A5C; --bad-soft:#3A1A17;
+  --art-filter:invert(1) hue-rotate(180deg); --art-blend:screen;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1115; --surface:#171B21; --sunk:#1E242B; --ink:#E7EBEF; --muted:#9AA4B0; --line:#2B323B;
+  --accent:#7097FF; --accent-ink:#0E1115; --accent-soft:#1D2840;
+  --plate-red:#FF6A5C; --plate-blue:#7097FF; --plate-yellow:#F0C232; --plate-green:#4CC27E; --plate-white:#D7D9D2; --plate-edge:#5D6670;
+  --good:#4CC27E; --good-soft:#16301F; --warn:#F0C232; --warn-soft:#352C10; --bad:#FF6A5C; --bad-soft:#3A1A17;
+  --art-filter:invert(1) hue-rotate(180deg); --art-blend:screen;
+  color-scheme:dark}
+
+html{-webkit-text-size-adjust:100%}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 calc(88px + env(safe-area-inset-bottom,0px))}
+#app{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
+img{max-width:100%}
+label.btn{display:inline-flex;align-items:center}
+h1,h2,h3{margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:.02em}
+h3{font-size:16px;font-weight:600}
+p{margin:0}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.06em}
+.brand i{display:block;width:6px;border-radius:2px}
+.brand i:nth-child(1){height:22px;background:var(--plate-red)}
+.brand i:nth-child(2){height:18px;background:var(--plate-blue)}
+.brand i:nth-child(3){height:14px;background:var(--plate-yellow)}
+.sync{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sync::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.sync.ok::before{background:var(--good)} .sync.local::before{background:var(--warn)} .sync.err::before{background:var(--bad)}
+.datebar{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+.datebar .d{flex:1;text-align:center;font-weight:600}
+.iconbtn{border:0;background:transparent;width:40px;height:40px;border-radius:9px;cursor:pointer;font-size:20px;line-height:1;color:var(--muted)}
+.iconbtn:hover{background:var(--sunk);color:var(--ink)}
+.chipbtn{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer}
+
+/* surfaces */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:13px;color:var(--muted)}
+input[type=text],input[type=number],input:not([type]),select{width:100%;min-width:0;background:var(--sunk);border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:16px}
+input::placeholder{color:var(--muted);opacity:.75}
+.btn{border:0;background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:11px 16px;font-weight:600;cursor:pointer;font-size:15px}
+.btn.ghost{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.note{background:var(--sunk);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--muted)}
+.note b{color:var(--ink)}
+
+/* big number + bars */
+.big{font-family:var(--display);font-size:38px;line-height:1;font-weight:600;font-variant-numeric:tabular-nums}
+.big small{font-size:16px;color:var(--muted);font-weight:500;margin-left:4px}
+.meter{display:flex;flex-direction:column;gap:4px}
+.meter .spread span:last-child{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
+.track{height:10px;background:var(--sunk);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.fill{height:100%;background:var(--accent);border-radius:6px 0 0 6px;transition:width .3s}
+.fill.good{background:var(--good)} .fill.warn{background:var(--warn)} .fill.bad{background:var(--bad)}
+.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 9px;background:var(--sunk);color:var(--muted)}
+.pill.good{background:var(--good-soft);color:var(--good)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+
+/* sessions */
+.sessions{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.sess{flex:1 0 auto;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;min-width:62px}
+.sess b{font-family:var(--display);font-size:17px;letter-spacing:.03em;display:flex;align-items:center;gap:6px}
+.sess span{font-size:11px;color:var(--muted)}
+.sess[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.disc{width:11px;height:11px;border-radius:50%;display:inline-block;flex:none;border:1px solid var(--plate-edge)}
+.disc.blue{background:var(--plate-blue)} .disc.red{background:var(--plate-red)} .disc.green{background:var(--plate-green)} .disc.yellow{background:var(--plate-yellow)} .disc.white{background:var(--plate-white)}
+
+.ex header{display:flex;align-items:flex-start;gap:12px}
+.ex .th{font-size:13px;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted)}
+.hint b{color:var(--ink);font-family:var(--display);font-size:16px}
+.hint .up{color:var(--good);font-weight:600}
+.sets{display:flex;flex-direction:column;gap:6px}
+.set{display:grid;grid-template-columns:22px 1fr 14px 1fr 46px;gap:6px;align-items:center}
+.set .idx{font-family:var(--display);color:var(--muted);text-align:center;font-size:16px}
+.set input{text-align:center;padding:8px 4px;font-family:var(--display);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.set .x{text-align:center;color:var(--muted)}
+.chk{height:42px;border-radius:10px;border:1px solid var(--line);background:var(--sunk);cursor:pointer;font-size:18px;color:var(--muted)}
+.set.done .chk{background:var(--good);border-color:var(--good);color:var(--accent-ink)}
+.set.done input{border-color:var(--good)}
+.colhead{display:grid;grid-template-columns:22px 1fr 14px 1fr 46px;gap:6px;font-size:11px;color:var(--muted);text-align:center;letter-spacing:.06em}
+.linkbtn{border:0;background:none;color:var(--accent);cursor:pointer;padding:4px 0;font-size:14px;font-weight:500;align-self:flex-start}
+
+.plates{display:flex;align-items:center;gap:2px;height:40px}
+.plates .bar{width:26px;height:6px;background:var(--plate-edge);border-radius:2px}
+.plates .p{width:9px;border-radius:2px;border:1px solid var(--plate-edge)}
+.plates .lbl{margin-left:10px;font-size:12px;color:var(--muted)}
+
+/* food */
+.photo{display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px dashed var(--line);border-radius:12px;padding:16px;cursor:pointer;background:var(--sunk);text-align:center;font-weight:500}
+.photo img{max-height:160px;border-radius:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:6px 11px;font-size:13px;cursor:pointer}
+.chips button span{color:var(--muted);font-variant-numeric:tabular-nums}
+.meal{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.meal:first-of-type{border-top:0}
+.meal .nm{min-width:0;overflow-wrap:anywhere}
+.meal .nm small{display:block;color:var(--muted);font-size:12px}
+.meal .k{font-family:var(--display);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.del{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer;width:34px;height:34px;border-radius:8px}
+.del:hover{background:var(--bad-soft);color:var(--bad)}
+.slot-h{display:flex;justify-content:space-between;font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-top:6px}
+.draft{display:flex;flex-direction:column;gap:10px}
+.ditem{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;border-top:1px solid var(--line);padding-top:10px}
+.ditem .nmf{grid-column:1/-1}
+.ditem input{padding:7px 6px;font-size:15px}
+.ditem label{font-size:11px;color:var(--muted)}
+details summary{cursor:pointer;font-weight:600;list-style-position:inside}
+.err{color:var(--bad);font-size:14px}
+.ok{color:var(--good);font-size:14px}.ok b{font-family:var(--display);font-size:16px}
+.photo{justify-content:flex-start;text-align:left;padding:14px 16px}
+.photo small{display:block;font-size:12px;color:var(--muted);font-weight:400}
+.cam{width:38px;height:38px;border-radius:50%;background:var(--accent);flex:none;position:relative}
+.cam::after{content:"";position:absolute;inset:11px;border-radius:50%;border:2.5px solid var(--accent-ink)}
+.quick{display:flex;gap:8px}.quick input{flex:1}
+.meal button.nm{border:0;background:none;text-align:left;padding:4px 0;cursor:pointer;color:inherit;font-size:15px}
+.meal.pending{opacity:.7}.meal.pending .nm{display:flex;gap:8px;align-items:center}
+.meal.pending img{width:38px;height:38px;object-fit:cover;border-radius:6px;flex:none}
+.medit{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:2px 0 12px}
+.medit .full{grid-column:1/-1}.medit input{padding:7px 6px;font-size:15px}
+.lowc{color:var(--warn)}
+
+/* progress */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .v{font-family:var(--display);font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi .v small{font-size:14px;color:var(--muted);font-weight:500;margin-left:3px}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-size:10px;font-family:var(--body)}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .raw{fill:var(--muted);opacity:.55}
+.chart .main{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.chart .area{fill:var(--accent);opacity:.09}
+.chart .end{fill:var(--accent);stroke:var(--surface);stroke-width:2}
+.chart .endlbl{fill:var(--ink);font-weight:600;font-size:11px}
+.chart .tgt{stroke:var(--good);stroke-width:1.5;stroke-dasharray:4 4}
+.chart .tgtlbl{fill:var(--good);font-size:10px}
+.chart .b-ok{fill:var(--accent)} .chart .b-over{fill:var(--bad)} .chart .b-under{fill:var(--plate-edge)}
+.empty{padding:22px 10px;text-align:center;color:var(--muted);font-size:14px;background:var(--sunk);border-radius:10px}
+.formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--muted);overflow-x:auto;white-space:nowrap}
+
+/* tab bar + rest timer */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);
+  padding:6px max(10px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px))}
+.tabs nav{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.tabs button{border:0;background:transparent;border-radius:10px;padding:8px 4px;cursor:pointer;font-weight:500;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:13px}
+.tabs button b{font-family:var(--display);font-size:15px;letter-spacing:.05em}
+.tabs button[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
+.rest{position:fixed;left:0;right:0;z-index:19;bottom:calc(66px + env(safe-area-inset-bottom,0px));
+  padding:0 max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px))}
+.rest .in{max-width:560px;margin:0 auto;background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:12px;overflow:hidden;position:relative}
+.rest .t{font-family:var(--display);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;min-width:64px}
+.rest .rl{display:flex;flex-direction:column;min-width:0;line-height:1.3}
+.rest .rl b{font-weight:600;font-size:14px}
+.rest .rl small{font-size:12px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rest .nx{flex:none;width:52px;height:52px;border:0;border-radius:9px;background:var(--surface);padding:2px;cursor:pointer;margin:0}
+.rest .rb{position:absolute;left:0;bottom:0;height:3px;background:var(--plate-yellow)}
+.rest.done .in{background:var(--good);color:var(--accent-ink)}
+.rest button{margin-left:auto;border:0;background:transparent;color:inherit;font-size:14px;cursor:pointer;text-decoration:underline}
+
+/* exercise demo */
+.ex header .ttl{flex:1;min-width:0}
+.demo{flex:none;width:84px;height:84px;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:2px;cursor:pointer;position:relative;overflow:hidden}
+.demo::after{content:"";position:absolute;right:5px;bottom:5px;border-left:9px solid var(--accent);border-top:6px solid transparent;border-bottom:6px solid transparent;opacity:.85}
+.art{position:relative;width:100%;height:100%;filter:var(--art-filter)}
+.art img,.art .fig,.art svg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;mix-blend-mode:var(--art-blend)}
+.art .b{animation:ekfade 3s ease-in-out infinite}
+@keyframes ekfade{0%,15%{opacity:0}40%,62%{opacity:1}88%,100%{opacity:0}}
+.sheet{position:fixed;inset:0;z-index:40;background:color-mix(in srgb,var(--ink) 45%,transparent);display:flex;align-items:flex-end;justify-content:center;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)}
+.sheet .in{background:var(--surface);width:100%;max-width:560px;max-height:92%;overflow:auto;border-radius:18px 18px 0 0;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.sheet .big-art{width:100%;max-width:340px;aspect-ratio:268/275;align-self:center;background:var(--surface)}
+.sheet .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sheet .pair .art{aspect-ratio:268/275;height:auto;border:1px solid var(--line);border-radius:10px}
+.sheet .pair span{display:block;text-align:center;font-size:12px;color:var(--muted)}
+.cues{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.credit{font-size:12px;color:var(--muted)}
+.credit a{color:var(--accent)}
+@media (prefers-reduced-motion: reduce){.art .b{animation:none;opacity:0}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app"><p class="muted" style="padding:40px 0;text-align:center">กำลังโหลด Iron Log…</p></div>
+
+<div class="sheet" id="sheet" hidden></div>
+<div class="rest" id="rest" hidden><div class="in"><span class="t" id="restTime">0:00</span><span id="restNext"></span><span class="rl"><b id="restLbl">พักระหว่างเซ็ต</b><small id="restNextTxt"></small></span><button type="button" id="restClose">ปิด</button><span class="rb" id="restBar"></span></div></div>
+
+<div class="tabs"><nav aria-label="เมนูหลัก">
+  <button type="button" data-view="today"><b>TODAY</b>วันนี้</button>
+  <button type="button" data-view="train"><b>TRAIN</b>เวท</button>
+  <button type="button" data-view="food"><b>FOOD</b>อาหาร</button>
+  <button type="button" data-view="progress"><b>PROGRESS</b>ผลลัพธ์</button>
+</nav></div>
+<script>
+/* ---------- utils ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today=()=>ymd(new Date());
+const tIdx=s=>Math.round(Date.parse(s+'T00:00:00Z')/864e5);
+const fromIdx=i=>new Date(i*864e5).toISOString().slice(0,10);
+const shiftDate=(s,n)=>fromIdx(tIdx(s)+n);
+const dow=s=>new Date(s+'T00:00:00Z').getUTCDay();
+const TH_D=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+const TH_M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const fmtDate=s=>{const[,m,d]=s.split('-').map(Number);return `${TH_D[dow(s)]} ${d} ${TH_M[m-1]}`};
+const sd=s=>{const[,m,d]=s.split('-').map(Number);return `${d}/${m}`};
+const num=v=>{if(v===''||v==null)return null;const n=parseFloat(String(v).replace(',','.'));return Number.isFinite(n)?n:null};
+const r10=n=>Math.round(n/10)*10;
+const f1=n=>(Math.round(n*10)/10).toFixed(1);
+const uid=()=>Math.random().toString(36).slice(2,10);
+
+/* ---------- program (Upper/Lower, Mon–Thu, Fri Zone 2) ---------- */
+const PROGRAM={
+  UA:{name:'Upper A',th:'ส่วนบน A · เน้นแรง',plate:'blue',wd:'จ.',ex:[
+    {id:'bench',n:'Bench Press',th:'ดันอกบาร์',sets:4,lo:6,hi:8,inc:2.5,bar:1,rest:150},
+    {id:'row',n:'Barbell Row',th:'โรว์บาร์',sets:4,lo:6,hi:8,inc:2.5,bar:1,rest:120},
+    {id:'ohp',n:'Overhead Press',th:'ดันไหล่บาร์ยืน',sets:3,lo:6,hi:10,inc:2.5,bar:1,rest:120},
+    {id:'pulldown',n:'Lat Pulldown',th:'ดึงหลังลง',sets:3,lo:10,hi:12,inc:2.5,rest:90},
+    {id:'facepull',n:'Face Pull',th:'ดึงเชือกเข้าหน้า (ไหล่หลัง)',sets:2,lo:12,hi:15,inc:2.5,rest:60}]},
+  LA:{name:'Lower A',th:'ส่วนล่าง A · เน้นแรง',plate:'red',wd:'อ.',ex:[
+    {id:'squat',n:'Back Squat',th:'สควอทบาร์',sets:4,lo:6,hi:8,inc:5,bar:1,rest:180},
+    {id:'rdl',n:'Romanian Deadlift',th:'RDL เน้นต้นขาหลัง',sets:3,lo:8,hi:10,inc:5,bar:1,rest:120},
+    {id:'legpress',n:'Leg Press',th:'เครื่องเลกเพรส',sets:3,lo:10,hi:12,inc:10,rest:90},
+    {id:'legcurl',n:'Leg Curl',th:'งอเข่า (เครื่อง)',sets:2,lo:10,hi:12,inc:2.5,rest:60},
+    {id:'calf',n:'Calf Raise',th:'เขย่งน่อง',sets:3,lo:12,hi:15,inc:5,rest:60}]},
+  UB:{name:'Upper B',th:'ส่วนบน B · เน้นกล้าม',plate:'blue',wd:'พ.',ex:[
+    {id:'incdb',n:'Incline DB Press',th:'ดันอกดัมเบลเอียง (น้ำหนัก/ข้าง)',sets:3,lo:8,hi:12,inc:2,rest:90},
+    {id:'cablerow',n:'Seated Cable Row',th:'โรว์เคเบิลนั่ง',sets:3,lo:10,hi:12,inc:2.5,rest:90},
+    {id:'dbohp',n:'DB Shoulder Press',th:'ดันไหล่ดัมเบลนั่ง (น้ำหนัก/ข้าง)',sets:3,lo:10,hi:12,inc:2,rest:90},
+    {id:'lateral',n:'Lateral Raise',th:'ยกข้าง (น้ำหนัก/ข้าง)',sets:2,lo:12,hi:15,inc:1,rest:60},
+    {id:'pushdown',n:'Triceps Pushdown',th:'กดเคเบิลหลังแขน',sets:2,lo:12,hi:15,inc:2.5,rest:60},
+    {id:'curl',n:'DB Curl',th:'ม้วนแขนดัมเบล (น้ำหนัก/ข้าง)',sets:2,lo:10,hi:12,inc:1,rest:60}]},
+  LB:{name:'Lower B',th:'ส่วนล่าง B · hinge + ข้างเดียว',plate:'red',wd:'พฤ.',ex:[
+    {id:'deadlift',n:'Deadlift',th:'เดดลิฟต์ (หรือ trap bar)',sets:3,lo:5,hi:6,inc:5,bar:1,rest:180},
+    {id:'bss',n:'Bulgarian Split Squat',th:'สปลิตสควอท (ดัมเบล/ข้าง)',sets:3,lo:8,hi:10,inc:2,rest:90},
+    {id:'hipthrust',n:'Hip Thrust',th:'ดันสะโพกบาร์',sets:3,lo:8,hi:12,inc:5,bar:1,rest:90},
+    {id:'legext',n:'Leg Extension',th:'เหยียดเข่า (เครื่อง)',sets:2,lo:12,hi:15,inc:2.5,rest:60},
+    {id:'kneeraise',n:'Hanging Knee Raise',th:'ห้อยยกเข่า (นับครั้ง)',sets:3,lo:10,hi:15,inc:0,rest:60}]},
+  Z2:{name:'Zone 2',th:'เดินเร็ว Zone 2 ที่คอนโด ~45 นาที',plate:'green',wd:'ศ.',ex:[]}
+};
+const ORDER=['UA','LA','UB','LB','Z2'];
+const WD_SESSION={1:'UA',2:'LA',3:'UB',4:'LB',5:'Z2'};
+const EX={};ORDER.forEach(k=>PROGRAM[k].ex.forEach(e=>EX[e.id]=e));
+const MAIN_LIFTS=['bench','squat','deadlift','ohp','row','rdl','hipthrust'];
+
+const PRESETS=[
+  {name:'ข้าวมันไก่',kcal:596,p:25,c:70,f:23},
+  {name:'กะเพราไก่ไข่ดาวราดข้าว',kcal:630,p:28,c:70,f:26},
+  {name:'ผัดไทยกุ้งสด',kcal:545,p:20,c:70,f:20},
+  {name:'ก๋วยเตี๋ยวน้ำใสลูกชิ้น',kcal:350,p:18,c:45,f:10},
+  {name:'ข้าวต้มปลา',kcal:220,p:15,c:30,f:4},
+  {name:'ส้มตำไทย',kcal:150,p:4,c:25,f:4},
+  {name:'อกไก่ย่าง 100 g',kcal:165,p:31,c:0,f:4},
+  {name:'ข้าวสวย 1 ทัพพี',kcal:80,p:1.5,c:18,f:0.2},
+  {name:'ข้าวเหนียว 1 ห่อ',kcal:220,p:4.5,c:50,f:0.5},
+  {name:'ไข่ต้ม 1 ฟอง',kcal:75,p:6.5,c:0.5,f:5},
+  {name:'เวย์โปรตีน 1 สกู๊ป',kcal:120,p:24,c:3,f:1.5},
+  {name:'นมจืด 200 ml',kcal:130,p:6.5,c:10,f:7},
+  {name:'กาแฟเย็น',kcal:250,p:4,c:40,f:8},
+  {name:'กล้วยหอม 1 ลูก',kcal:105,p:1.3,c:27,f:0.4}
+];
+const SLOTS={b:'เช้า',l:'กลางวัน',s:'ว่าง',d:'เย็น'};
+const SLOT_ORDER=['b','l','s','d'];
+const defaultSlot=()=>{const h=new Date().getHours();return h<10?'b':h<15?'l':h<17?'s':'d'};
+
+/* ---------- state ---------- */
+const DEF_PROFILE={age:47,height:170,activity:1.55,deficit:500,ppk:1.8,fpk:0.75,goalWeight:75,kcalOverride:null};
+const S={days:{},profile:{...DEF_PROFILE},view:'today',date:today(),mode:'local',readonly:false,
+  sess:null,canAI:false,canImg:false,aiErr:'',aiMsg:'',editMeal:null,slot:defaultSlot(),e1rmEx:null};
+function day(d=S.date){return S.days[d]||(S.days[d]={kind:'day',date:d,weight:null,waist:null,meals:[],sets:[],cardio:null,session:null})}
+function sessionFor(d){const D=S.days[d];return (D&&D.session)||WD_SESSION[dow(d)]||null}
+
+/* ---------- storage: localStorage cache + db (owner-only) ---------- */
+const LS='ironlog.v1';
+function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LS)||'null');if(j){S.days=j.days||{};S.profile={...DEF_PROFILE,...(j.profile||{})}}}catch(e){}}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({days:S.days,profile:S.profile}))}catch(e){}}
+let db=null,sample=null;const dirty=new Set(),timers={},chains={};
+function saveDay(d=S.date){saveLocal();dirty.add(d);clearTimeout(timers[d]);timers[d]=setTimeout(()=>{timers[d]=null;flush(d)},700)}
+function flush(d){chains[d]=(chains[d]||Promise.resolve()).then(async()=>{
+  if(db&&!S.readonly&&S.days[d]){try{await db.doc('days/'+d).set(JSON.parse(JSON.stringify(S.days[d])));setSync('ok')}catch(e){dbErr(e)}}
+  if(!timers[d])dirty.delete(d)})}
+let profTimer=null,profDirty=false,profChain=Promise.resolve();
+function saveProfile(){saveLocal();profDirty=true;clearTimeout(profTimer);profTimer=setTimeout(()=>{profTimer=null;profChain=profChain.then(async()=>{
+  if(db&&!S.readonly){try{await db.doc('meta/profile').set({...S.profile});setSync('ok')}catch(e){dbErr(e)}}if(!profTimer)profDirty=false})},700)}
+function dbErr(e){if(e&&e.code==='invalid_argument'){S.readonly=true;setSync('ro')}else setSync('err')}
+let syncState='local';
+function setSync(s){syncState=s;const el=$('#sync');if(el)el.outerHTML=syncChip()}
+function syncChip(){const m={ok:['ok','ซิงก์ทุกเครื่อง'],local:['local','บันทึกในเครื่องนี้'],err:['err','ซิงก์ไม่สำเร็จ ลองใหม่อัตโนมัติ'],ro:['err','อ่านอย่างเดียว']}[syncState]||['local',''];return `<span class="sync ${m[0]}" id="sync">${m[1]}</span>`}
+
+let pendingRender=false;
+function safeRender(){const a=document.activeElement;
+  if(!(a&&a.id&&a.closest&&a.closest('#app')&&/INPUT|TEXTAREA/.test(a.tagName))){render();return}
+  const id=a.id,v=a.value,ss=a.selectionStart,se=a.selectionEnd;render();
+  const b=document.getElementById(id);if(b){b.value=v;b.focus();try{b.setSelectionRange(ss,se)}catch(e){}}}
+
+async function boot(){
+  loadLocal();render();
+  const cl=window.claude;const use=n=>cl&&cl.use?Promise.resolve(cl.use(n)).catch(()=>null):Promise.resolve(null);
+  initAI();try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+  const u=await use('user');
+  if(u){try{const o=await u.isOwner();if(o===false){S.readonly=true}}catch(e){}}
+  const d=await use('db');
+  if(!d){setSync('local');return}
+  db=d;if(S.readonly){setSync('ro');return}
+  setSync('ok');
+  db.collection('days').onSnapshot(snap=>{let ch=false;
+    for(const doc of snap.docs){if(dirty.has(doc.id))continue;const v=doc.data();if(!v)continue;const cur=S.days[doc.id];
+      if(!cur||JSON.stringify(cur)!==JSON.stringify(v)){S.days[doc.id]=JSON.parse(JSON.stringify(v));ch=true}}
+    if(ch){saveLocal();safeRender()}},e=>dbErr(e));
+  db.doc('meta/profile').onSnapshot(s=>{if(profDirty||!s.exists)return;const v=s.data();const np={...DEF_PROFILE,...v};
+    if(JSON.stringify(np)!==JSON.stringify(S.profile)){S.profile=np;saveLocal();safeRender()}},e=>dbErr(e));
+}
+
+/* ---------- models ---------- */
+function weights(){return Object.values(S.days).filter(d=>d.weight).map(d=>({d:d.date,t:tIdx(d.date),w:d.weight})).sort((a,b)=>a.t-b.t)}
+function waists(){return Object.values(S.days).filter(d=>d.waist).map(d=>({d:d.date,t:tIdx(d.date),w:d.waist})).sort((a,b)=>a.t-b.t)}
+function maAt(arr,t,win=7){const xs=arr.filter(p=>p.t<=t&&p.t>t-win);return xs.length?xs.reduce((s,p)=>s+p.w,0)/xs.length:null}
+function latestWeight(){const ws=weights();return ws.length?(maAt(ws,ws[ws.length-1].t)||ws[ws.length-1].w):82}
+function slope(pts){const n=pts.length;if(n<2)return null;const mx=pts.reduce((s,p)=>s+p.t,0)/n,my=pts.reduce((s,p)=>s+p.w,0)/n;
+  let a=0,b=0;for(const p of pts){a+=(p.t-mx)*(p.w-my);b+=(p.t-mx)**2}return b?a/b:null}
+function targets(){const p=S.profile;const w=latestWeight();const bmr=10*w+6.25*p.height-5*p.age+5;const tdee=bmr*p.activity;
+  const kcal=p.kcalOverride||r10(tdee-p.deficit);const protein=Math.round(p.ppk*w);const fat=Math.round(p.fpk*w);
+  const carb=Math.max(0,Math.round((kcal-protein*4-fat*9)/4));return{bmr:Math.round(bmr),tdee:r10(tdee),kcal,protein,fat,carb,w}}
+function totals(D){const t={kcal:0,p:0,c:0,f:0};for(const m of D.meals||[]){t.kcal+=+m.kcal||0;t.p+=+m.p||0;t.c+=+m.c||0;t.f+=+m.f||0}return t}
+function weeklyRate(){const ws=weights();if(ws.length<4)return null;const end=ws[ws.length-1].t;const pts=ws.filter(p=>p.t>end-14);if(pts.length<4)return null;const s=slope(pts);return s==null?null:s*7}
+function adaptive(){const ws=weights();if(!ws.length)return{need:'บันทึกน้ำหนัก + อาหารทุกวัน ~2 สัปดาห์'};
+  const end=ws[ws.length-1].t,start=end-20;const wpts=ws.filter(p=>p.t>=start);
+  const intake=Object.values(S.days).filter(d=>{const t=tIdx(d.date);return t>=start&&t<=end}).map(d=>totals(d).kcal).filter(k=>k>=1000);
+  if(wpts.length<8||intake.length<10)return{need:`ต้องการน้ำหนัก ${Math.max(0,8-wpts.length)} วัน และวันที่บันทึกอาหารครบ ${Math.max(0,10-intake.length)} วันเพิ่ม`};
+  const sl=slope(wpts);const mean=intake.reduce((a,b)=>a+b,0)/intake.length;return{tdee:r10(mean-sl*7700),mean:Math.round(mean),slope:sl,n:intake.length}}
+const e1rm=(w,r)=>w*(1+r/30);
+function e1rmSeries(id){const out=[];for(const d of Object.values(S.days)){const ss=(d.sets||[]).filter(s=>s.ex===id&&s.done&&s.w>0&&s.r>0&&s.r<=12);
+  if(ss.length)out.push({t:tIdx(d.date),d:d.date,w:Math.max(...ss.map(s=>e1rm(s.w,s.r)))})}return out.sort((a,b)=>a.t-b.t)}
+function lastPerf(id,before){let best=null;for(const d of Object.values(S.days)){if(d.date>=before)continue;
+  const ss=(d.sets||[]).filter(s=>s.ex===id&&s.done&&s.w!=null&&s.r!=null);if(ss.length&&(!best||d.date>best.date))best={date:d.date,sets:ss.slice().sort((a,b)=>a.i-b.i)}}return best}
+function suggest(ex,before){const lp=lastPerf(ex.id,before);if(!lp)return{lp:null,w:null,up:false};
+  const top=Math.max(...lp.sets.map(s=>s.w));const atTop=lp.sets.filter(s=>s.w===top);
+  const up=ex.inc>0&&atTop.length>=ex.sets&&atTop.every(s=>s.r>=ex.hi);return{lp,w:up?+(top+ex.inc).toFixed(2):top,up}}
+function platesFor(w){if(!(w>20))return null;let side=(w-20)/2;const out=[];for(const p of [25,20,15,10,5,2.5,1.25]){while(side>=p-1e-9){out.push(p);side-=p}}return{out,rem:side}}
+const PLATE_COLOR={25:'var(--plate-red)',20:'var(--plate-blue)',15:'var(--plate-yellow)',10:'var(--plate-green)',5:'var(--plate-white)',2.5:'var(--plate-red)',1.25:'var(--plate-white)'};
+const PLATE_H={25:40,20:40,15:36,10:32,5:24,2.5:18,1.25:14};
+function weekSets(){const t=tIdx(today());const wd=(dow(today())+6)%7;const start=t-wd;let n=0;
+  for(const d of Object.values(S.days)){const x=tIdx(d.date);if(x>=start&&x<=t)n+=(d.sets||[]).filter(s=>s.done).length}return n}
+
+/* Iron Log animated figures: side-view line art, two-bone IK, poses A (start) -> B (end) */
+const FIG_L={th:56,sh:54,tor:86,ua:40,fa:36,neck:22,foot:20};
+const FIGS={
+  bench:{scene:'flatbench',eq:[{t:'plate',at:'nH',r:26}],kP:'up',eP:'down',
+    A:{hip:[150,176],ank:[196,256],tor:180,hand:[100,158]},B:{hip:[150,176],ank:[196,256],tor:180,hand:[84,104]}},
+  row:{eq:[{t:'plate',at:'nH',r:22}],eP:'up',
+    A:{ank:[150,256],hip:[118,158],tor:-38,hd:-30,hand:[180,186]},B:{ank:[150,256],hip:[118,158],tor:-38,hd:-30,hand:[152,158]}},
+  ohp:{s:.85,eq:[{t:'plate',at:'nH',r:20}],eP:'down',
+    A:{ank:[130,256],hip:[130,164],tor:-90,hand:[148,92]},B:{ank:[130,256],hip:[130,164],tor:-90,hd:-84,hand:[128,38]}},
+  pulldown:{scene:'pulldown',eq:[{t:'cable',to:[124,10]},{t:'knob',at:'nH'}],kP:'up',eP:'down',
+    A:{hip:[120,192],ank:[168,250],tor:-95,hand:[124,46]},B:{hip:[120,192],ank:[168,250],tor:-98,hand:[134,112]}},
+  facepull:{scene:'cablehigh',eq:[{t:'cable',to:[238,74]},{t:'rope',at:'nH'}],eP:'back',
+    A:{ank:[124,256],hip:[112,148],tor:-88,hand:[182,80]},B:{ank:[124,256],hip:[110,148],tor:-96,hd:-92,hand:[122,50]}},
+  squat:{eq:[{t:'plate',at:'nH',r:24}],eP:'back',
+    A:{ank:[130,256],hip:[130,148],tor:-88,handRel:[-8,-2]},B:{ank:[130,256],hip:[102,206],tor:-55,hd:-62,handRel:[-8,-2]}},
+  rdl:{eq:[{t:'plate',at:'nH',r:22}],
+    A:{ank:[135,256],hip:[135,148],tor:-90,hand:[139,148]},B:{ank:[135,256],hip:[110,152],tor:-18,hd:-12,hand:[182,204]}},
+  legpress:{scene:'legpress',eq:[{t:'platform'}],kP:'up',
+    A:{hip:[110,206],ank:[184,174],tor:-150,hand:[100,210],ft:-58},B:{hip:[110,206],ank:[200,142],tor:-150,hand:[100,210],ft:-58}},
+  legcurl:{scene:'proneBench',eq:[{t:'roll',at:'roll',pivot:[200,190]}],kP:'down',eP:'down',
+    A:{hip:[140,178],ank:[248,180],tor:180,hd:184,hand:[40,196],ft:90,roll:[248,166]},B:{hip:[140,178],ank:[188,126],tor:180,hd:184,hand:[40,196],ft:10,roll:[200,120]}},
+  calf:{scene:'calfblock',eq:[{t:'pad',at:'sh'}],eP:'down',
+    A:{ank:[124,249],hip:[122,141],tor:-90,handRel:[14,10],ft:-15},B:{ank:[134,229],hip:[131,122],tor:-90,handRel:[14,10],ft:55}},
+  incdb:{scene:'incline',eq:[{t:'db'}],kP:'up',eP:'down',
+    A:{hip:[112,198],ank:[168,254],tor:-120,hd:-112,hand:[100,128]},B:{hip:[112,198],ank:[168,254],tor:-120,hd:-112,hand:[96,62]}},
+  cablerow:{scene:'cablerow',eq:[{t:'cable',to:[240,200]},{t:'knob',at:'nH'}],kP:'up',eP:'back',
+    A:{hip:[88,214],ank:[196,206],tor:-72,hand:[182,152],ft:-80},B:{hip:[88,214],ank:[196,206],tor:-96,hand:[112,152],ft:-80}},
+  dbohp:{scene:'uprightSeat',eq:[{t:'db'}],kP:'up',eP:'down',
+    A:{hip:[120,206],ank:[172,256],tor:-88,hand:[132,116]},B:{hip:[120,206],ank:[172,256],tor:-88,hand:[127,58]}},
+  lateral:{front:true,eq:[{t:'db'}],eP:'down',
+    A:{hip:[134,148],ank:[150,256],fank:[118,256],tor:-90,hand:[166,146],fhand:[102,146]},B:{hip:[134,148],ank:[150,256],fank:[118,256],tor:-90,hand:[230,80],fhand:[38,80]}},
+  pushdown:{scene:'cabletop',eq:[{t:'cable',to:[150,12]},{t:'knob',at:'nH'}],eP:'back',
+    A:{ank:[100,256],hip:[100,148],tor:-84,hand:[142,98]},B:{ank:[100,256],hip:[100,148],tor:-84,hand:[126,146]}},
+  curl:{eq:[{t:'db'}],eP:'down',
+    A:{ank:[120,256],hip:[120,148],tor:-90,hand:[124,148]},B:{ank:[120,256],hip:[120,148],tor:-90,hand:[140,94]}},
+  deadlift:{eq:[{t:'plate',at:'nH',r:25}],
+    A:{ank:[130,256],hip:[84,198],tor:-28,hd:-20,hand:[149,236]},B:{ank:[130,256],hip:[130,148],tor:-90,hand:[134,148]}},
+  bss:{scene:'rearbench',eq:[{t:'db'}],fkP:'down',
+    A:{ank:[160,256],fank:[42,196],hip:[124,152],tor:-86,handRel:[4,74],fft:180},B:{ank:[160,256],fank:[42,196],hip:[112,196],tor:-82,handRel:[4,74],fft:180}},
+  hipthrust:{scene:'thrustbench',eq:[{t:'plate',at:'nH',r:30}],kP:'up',eP:'up',
+    A:{hip:[144,236],ank:[208,256],tor:230,hd:210,hand:[142,220]},B:{hip:[154,166],ank:[208,256],tor:182,hd:196,hand:[152,148]}},
+  legext:{scene:'legext',eq:[{t:'roll',at:'roll',pivot:[166,206]}],kP:'up',
+    A:{hip:[110,200],ank:[164,254],tor:-100,hand:[126,194],roll:[174,246]},B:{hip:[110,200],ank:[220,192],tor:-100,hand:[126,194],ft:-60,roll:[224,202]}},
+  kneeraise:{scene:'pullup',kP:'fwd',eP:'fwd',
+    A:{hip:[124,166],ank:[127,273],tor:-90,hand:[128,22],ft:70},B:{hip:[130,160],ank:[180,206],tor:-96,hand:[128,22],ft:20}}
+};
+function figIK(a,b,l1,l2,pref){let dx=b[0]-a[0],dy=b[1]-a[1];let d=Math.hypot(dx,dy)||1e-6;const mx=l1+l2-.5,mn=Math.abs(l1-l2)+.5;
+  if(d>mx){b=[a[0]+dx/d*mx,a[1]+dy/d*mx];dx=b[0]-a[0];dy=b[1]-a[1];d=mx}if(d<mn)d=mn;
+  const ux=dx/d,uy=dy/d,x=(l1*l1-l2*l2+d*d)/(2*d),h=Math.sqrt(Math.max(0,l1*l1-x*x));
+  const p1=[a[0]+ux*x-uy*h,a[1]+uy*x+ux*h],p2=[a[0]+ux*x+uy*h,a[1]+uy*x-ux*h];
+  const pick={fwd:p=>p[0],back:p=>-p[0],down:p=>p[1],up:p=>-p[1]}[pref||'down'];return {m:pick(p1)>=pick(p2)?p1:p2,end:b}}
+function figPose(F,t){const L={};const s=F.s||1;for(const k in FIG_L)L[k]=FIG_L[k]*s;
+  const A=F.A,B=F.B,lp=(a,b)=>a==null?b:b==null?a:Array.isArray(a)?[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]:a+(b-a)*t;
+  const g=k=>lp(A[k],B[k]);const rad=d=>d*Math.PI/180,dir=d=>[Math.cos(rad(d)),Math.sin(rad(d))];
+  const P={};P.hip=g('hip');const tor=g('tor'),td=dir(tor);
+  P.neck=[P.hip[0]+td[0]*L.tor,P.hip[1]+td[1]*L.tor];const hd=dir(g('hd')??tor);P.head=[P.neck[0]+hd[0]*L.neck,P.neck[1]+hd[1]*L.neck];
+  P.mid=[(P.neck[0]+P.hip[0])/2,(P.neck[1]+P.hip[1])/2];
+  const shBase=[P.neck[0]-td[0]*10*s,P.neck[1]-td[1]*10*s];
+  if(F.front){P.sh=[shBase[0]+24,shBase[1]];P.fsh=[shBase[0]-24,shBase[1]];P.hipN=[P.hip[0]+10,P.hip[1]];P.hipF=[P.hip[0]-10,P.hip[1]]}
+  else{P.sh=shBase;P.fsh=[shBase[0]-6,shBase[1]-2];P.hipN=P.hip;P.hipF=[P.hip[0]-6,P.hip[1]-2]}
+  const ank=g('ank');const k1=figIK(P.hipN,ank,L.th,L.sh,F.kP||'fwd');P.nK=k1.m;P.nA=k1.end;
+  const fank=g('fank')||[ank[0]-10,ank[1]];const k2=figIK(P.hipF,fank,L.th,L.sh,F.front?'back':(F.fkP||F.kP||'fwd'));P.fK=k2.m;P.fA=k2.end;
+  const ft=dir(g('ft')??0),fft=dir(g('fft')??(g('ft')??0));
+  P.nT=[P.nA[0]+ft[0]*L.foot,P.nA[1]+ft[1]*L.foot];P.fT=[P.fA[0]+fft[0]*L.foot,P.fA[1]+fft[1]*L.foot];
+  let hand=g('hand');const hr=g('handRel');if(hr)hand=[P.sh[0]+hr[0],P.sh[1]+hr[1]];
+  const e1=figIK(P.sh,hand,L.ua,L.fa,F.eP||'down');P.nE=e1.m;P.nH=e1.end;
+  let fh=g('fhand')||[hand[0]-6,hand[1]-3];if(hr&&!A.fhand)fh=[P.fsh[0]+hr[0],P.fsh[1]+hr[1]];
+  const e2=figIK(P.fsh,fh,L.ua,L.fa,F.front?'down':(F.eP||'down'));P.fE=e2.m;P.fH=e2.end;
+  for(const k of ['roll'])if(A[k])P[k]=g(k);
+  return {P,L,s}}
+const FIG_SCENE={
+  flatbench:'<rect x="28" y="192" width="146" height="12" rx="3"/><line x1="48" y1="204" x2="48" y2="265"/><line x1="152" y1="204" x2="152" y2="265"/>',
+  pulldown:'<rect x="30" y="6" width="14" height="259"/><line x1="44" y1="10" x2="124" y2="10"/><rect x="86" y="200" width="70" height="10" rx="3"/><line x1="120" y1="210" x2="120" y2="265"/><circle cx="172" cy="168" r="9"/><line x1="172" y1="168" x2="44" y2="168"/>',
+  cablehigh:'<rect x="232" y="14" width="26" height="251"/><circle cx="238" cy="74" r="7"/>',
+  cabletop:'<rect x="160" y="0" width="24" height="265"/><circle cx="150" cy="12" r="7"/><line x1="150" y1="12" x2="160" y2="12"/>',
+  cablerow:'<rect x="56" y="222" width="70" height="43" rx="3"/><rect x="238" y="40" width="24" height="225"/><circle cx="240" cy="200" r="6"/><rect x="200" y="186" width="8" height="40" rx="2"/>',
+  legpress:'<line x1="30" y1="170" x2="120" y2="220" stroke-width="10"/><line x1="96" y1="214" x2="96" y2="265"/><line x1="170" y1="250" x2="252" y2="70"/><line x1="192" y1="252" x2="262" y2="96"/>',
+  proneBench:'<rect x="18" y="192" width="200" height="12" rx="3"/><line x1="40" y1="204" x2="40" y2="265"/><line x1="196" y1="204" x2="196" y2="265"/><circle cx="200" cy="190" r="5"/>',
+  calfblock:'<rect x="140" y="246" width="96" height="19" rx="2"/>',
+  incline:'<line x1="100" y1="214" x2="48" y2="124" stroke-width="10"/><rect x="84" y="206" width="66" height="10" rx="3"/><line x1="110" y1="216" x2="110" y2="265"/>',
+  uprightSeat:'<line x1="100" y1="214" x2="96" y2="112" stroke-width="10"/><rect x="94" y="212" width="58" height="10" rx="3"/><line x1="120" y1="222" x2="120" y2="265"/>',
+  rearbench:'<rect x="12" y="204" width="64" height="12" rx="3"/><line x1="22" y1="216" x2="22" y2="265"/><line x1="66" y1="216" x2="66" y2="265"/>',
+  thrustbench:'<rect x="14" y="174" width="80" height="14" rx="4"/><line x1="26" y1="188" x2="26" y2="265"/><line x1="82" y1="188" x2="82" y2="265"/>',
+  legext:'<line x1="88" y1="212" x2="76" y2="118" stroke-width="10"/><rect x="70" y="206" width="98" height="12" rx="3"/><line x1="100" y1="218" x2="100" y2="265"/><circle cx="166" cy="206" r="5"/>',
+  pullup:'<line x1="40" y1="22" x2="220" y2="22" stroke-width="5"/><line x1="44" y1="22" x2="44" y2="275"/><line x1="216" y1="22" x2="216" y2="275"/>'
+};
+function figSVG(key,t){const F=FIGS[key];const {P,L,s}=figPose(F,t);const INK='#111',PAP='#fff';const o=[];
+  const f=n=>n.toFixed(1);
+  const lim=(a,b)=>`<line x1="${f(P[a][0])}" y1="${f(P[a][1])}" x2="${f(P[b][0])}" y2="${f(P[b][1])}" stroke-width="WW"/>`;
+  const group=segs=>{let k='',w='';for(const [a,b,wd] of segs){const W=wd*s;const l=lim(a,b);k+=l.replace('WW',f(W+5));w+=l.replace('WW',f(W))}
+    return `<g stroke="${INK}" stroke-linecap="round">${k}</g><g stroke="${PAP}" stroke-linecap="round">${w}</g>`};
+  const circ=(c,r,fill=PAP,sw=2.5)=>`<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${f(r)}" fill="${fill}" stroke="${INK}" stroke-width="${sw}"/>`;
+  const mid=(a,b)=>[(P[a][0]+P[b][0])/2,(P[a][1]+P[b][1])/2];
+  const eq=F.eq||[];const has=t=>eq.find(e=>e.t===t);
+  if(key!=='kneeraise')o.push(`<line x1="6" y1="265" x2="262" y2="265" stroke="${INK}" stroke-width="2"/>`);
+  if(F.scene)o.push(`<g fill="${PAP}" stroke="${INK}" stroke-width="2.5">${FIG_SCENE[F.scene]}</g>`);
+  for(const e of eq){if(e.t==='cable'){const h=mid('nH','fH');o.push(`<line x1="${f(h[0])}" y1="${f(h[1])}" x2="${e.to[0]}" y2="${e.to[1]}" stroke="${INK}" stroke-width="2"/>`)}
+    if(e.t==='roll'){o.push(`<line x1="${e.pivot[0]}" y1="${e.pivot[1]}" x2="${f(P.roll[0])}" y2="${f(P.roll[1])}" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`)}}
+  const torsoW=F.front?46:36,waistW=F.front?38:30;
+  const armF=group([['fsh','fE',13],['fE','fH',10]]),armN=group([['sh','nE',13],['nE','nH',10]]);
+  const legF=group([['hipF','fK',18],['fK','fA',14],['fA','fT',8]]);
+  const body=group([['neck','mid',torsoW],['mid','hip',waistW],['hipN','nK',18],['nK','nA',14],['nA','nT',8]]);
+  const dbF=has('db')?circ(P.fH,10*s)+circ(P.fH,4*s,INK,1):'',dbN=has('db')?circ(P.nH,10*s)+circ(P.nH,4*s,INK,1):'';
+  if(F.front){o.push(legF,body,circ(P.head,14*s),armF,dbF,armN,dbN)}
+  else{o.push(armF,dbF,legF,body,circ(P.head,14*s),armN)}
+  for(const e of eq){
+    if(e.t==='plate'){const c=P[e.at],r=e.r*s;o.push(circ(c,r,PAP,3)+circ(c,r*.66,'none',1.5)+circ(c,4.5*s,INK,1))}
+    if(e.t==='db'&&!F.front)o.push(dbN);
+    if(e.t==='knob')o.push(circ(P[e.at],5*s,INK,1));
+    if(e.t==='rope'){const h=mid('nH','fH');o.push(`<line x1="${f(h[0]-2)}" y1="${f(h[1]-10)}" x2="${f(h[0]+2)}" y2="${f(h[1]+10)}" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`)}
+    if(e.t==='roll')o.push(circ(P.roll,9*s));
+    if(e.t==='pad'){const c=P[e.at];o.push(`<rect x="${f(c[0]-14)}" y="${f(c[1]-14)}" width="28" height="10" rx="4" fill="${PAP}" stroke="${INK}" stroke-width="2.5"/><line x1="${f(c[0]+14)}" y1="${f(c[1]-9)}" x2="262" y2="${f(c[1]-9)}" stroke="${INK}" stroke-width="4"/>`)}
+    if(e.t==='platform'){const a=P.nA;o.push(`<line x1="${f(a[0]+2)}" y1="${f(a[1]+16)}" x2="${f(a[0]+26)}" y2="${f(a[1]-26)}" stroke="${INK}" stroke-width="8" stroke-linecap="round"/>`)}
+  }
+  if(!eq.some(e=>e.t==='plate'))o.push(circ(P.nH,6*s));
+  return `<svg viewBox="0 0 268 275" xmlns="http://www.w3.org/2000/svg">${o.join('')}</svg>`}
+
+const DEMO={
+  bench:{ek:'0042',c:['บีบสะบักชิดกัน อกยก เท้ายันพื้น','บาร์ลงแตะอกระดับใต้หัวนม','ศอกทำมุม ~45° กับลำตัว ไม่กางสุด']},
+  row:{ek:'0026',near:'ภาพอ้างอิงเป็นจับหงายมือ จับคว่ำก็ได้',c:['ก้มตัว ~45° หลังตรง เข่างอเล็กน้อย','ดึงบาร์เข้าหาสะดือ บีบสะบัก','ลำตัวนิ่ง ไม่เหวี่ยงช่วยดึง']},
+  ohp:{ek:'0004',near:'ภาพอ้างอิงเป็นท่านั่ง โปรแกรมคุณทำแบบยืนตามภาพเคลื่อนไหว',c:['เกร็งก้นและท้อง ไม่แอ่นหลัง','ดันบาร์ผ่านหน้า แล้วยื่นศีรษะลอดใต้บาร์','ล็อกแขนเหนือศีรษะ บาร์อยู่เหนือกลางเท้า']},
+  pulldown:{ek:'0093',near:'ภาพอ้างอิงเป็นจับหงายมือ ใช้จับคว่ำกว้างกว่าไหล่ได้',c:['ยกอกเข้าหาบาร์ เอนหลังไม่เกิน ~15°','ดึงศอกลงข้างลำตัว','ปล่อยขึ้นช้าจนแขนเหยียด']},
+  facepull:{fig:'facepull',c:['ตั้งรอกสูงระดับหน้าผาก ใช้เชือกสองหัว','ดึงเข้าหาหน้า แยกมือออกข้างหู','ศอกสูงระดับไหล่ บีบไหล่หลังค้าง 1 วินาที']},
+  squat:{ek:'0122',c:['บาร์วางบนกล้ามบ่า ไม่วางบนคอ','เข่าไปทางเดียวกับปลายเท้า','ลงลึกเท่าที่หลังยังตรง ดันพื้นขึ้นทั้งเท้า']},
+  rdl:{ek:'0118',c:['งอเข่าเล็กน้อยแล้วคงไว้','ดันก้นไปข้างหลัง บาร์ไถชิดขา','ลงถึงกลางหน้าแข้ง หรือจนตึงต้นขาหลัง']},
+  legpress:{ek:'0127',c:['หลังล่างแนบเบาะตลอด','ลงจนเข่าประมาณ 90°','ดันขึ้นโดยไม่ล็อกเข่า']},
+  legcurl:{ek:'0117',near:'แสดงแบบนอนคว่ำ ถ้าเครื่องเป็นแบบนั่งใช้หลักเดียวกัน',c:['สะโพกแนบเบาะ ไม่ยกก้น','งอเข่าเต็มช่วง','ปล่อยกลับช้า 2–3 วินาที']},
+  calf:{ek:'0282',c:['ลงจนส้นต่ำกว่าแท่น รู้สึกยืด','ขึ้นสุดปลายเท้า ค้าง 1 วินาที','เข่าตรงแต่ไม่ล็อก']},
+  incdb:{ek:'0061',c:['ม้านั่งเอียง ~30°','ดัมเบลลงข้างอกส่วนบน','ดันขึ้นเข้าหากันเล็กน้อย ไม่กระแทก']},
+  cablerow:{ek:'0025',c:['นั่งหลังตรง อกยก','ดึงเข้าหาท้องส่วนบน บีบสะบัก','ลำตัวไม่โยกไปมา']},
+  dbohp:{ek:'0038',near:'ภาพอ้างอิงเป็นยืนดันข้างเดียว โปรแกรมคุณนั่งดันสองข้างตามภาพเคลื่อนไหว',c:['ปรับพนักพิงตั้ง ~80–90°','ดัมเบลลงถึงระดับหู','ดันขึ้นตรง ไม่แอ่นหลัง']},
+  lateral:{ek:'0018',c:['ศอกงอเล็กน้อยตลอด','ยกออกข้างถึงระดับไหล่ นำด้วยศอก','ลงช้า ไม่เหวี่ยงตัว']},
+  pushdown:{ek:'0205',c:['ศอกแนบข้างลำตัวนิ่ง','กดลงจนแขนเหยียดสุด','คืนขึ้นจนศอก ~90°']},
+  curl:{ek:'0224',c:['ศอกนิ่งข้างลำตัว','หมุนฝ่ามือขึ้นระหว่างยก','ลงจนแขนเกือบเหยียดอย่างช้าๆ']},
+  deadlift:{ek:'0099',c:['บาร์อยู่เหนือกลางเท้า หน้าแข้งชิดบาร์','หลังตรง เกร็งท้อง ดันพื้นด้วยขา','ยืนตรงล็อกสะโพก ไม่แอ่นหลังด้านบน']},
+  bss:{ek:'0129',near:'ภาพอ้างอิงเป็น rear lunge (ใกล้เคียง) ส่วน BSS วางหลังเท้าหลังบนม้านั่งตามภาพเคลื่อนไหว',c:['เท้าหน้าห่างม้านั่งราวหนึ่งก้าวยาว','ลงตรงๆ จนเข่าหลังเกือบแตะพื้น','น้ำหนักอยู่ที่ส้นเท้าหน้า']},
+  hipthrust:{fig:'hipthrust',c:['ขอบม้านั่งอยู่ใต้สะบัก','ดันสะโพกขึ้นจนลำตัวขนานพื้น หน้าแข้งตั้งฉาก','บีบก้นค้างบนสุด 1 วินาที คางชิดอก']},
+  legext:{ek:'0142',c:['ตั้งเบาะให้เข่าตรงกับแกนหมุน','เหยียดจนสุด ค้างสั้นๆ','ลงช้า ไม่ปล่อยตก']},
+  kneeraise:{fig:'kneeraise',c:['ห้อยตัวนิ่ง ไม่เหวี่ยง','ยกเข่าถึงระดับสะโพกหรือสูงกว่า','ม้วนสะโพกเข้าหาตัว ลงช้า']}
+};
+const reduceMotion=(()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}})();
+function artHTML(id,which){if(!FIGS[id])return '';
+  if(which==='a'||which==='b')return `<div class="art">${figSVG(id,which==='a'?0:1)}</div>`;
+  return `<div class="art" role="img" aria-label="ภาพเคลื่อนไหวท่า ${esc(EX[id].n)}"><div class="fig" data-fig="${id}">${figSVG(id,0)}</div></div>`}
+function refHTML(id){const d=DEMO[id];if(!d||!d.ek)return '';
+  return `<h3>ภาพอ้างอิง</h3><div class="pair"><div class="art"><img src="ek/${d.ek}-relaxation.svg" alt="ภาพอ้างอิงท่า ${esc(EX[id].n)} 1"></div><div class="art"><img src="ek/${d.ek}-tension.svg" alt="ภาพอ้างอิงท่า ${esc(EX[id].n)} 2"></div></div>`}
+function cycleT(ms){const p=(ms%3000)/3000;const e=x=>.5-.5*Math.cos(Math.PI*x);
+  if(p<.15)return 0;if(p<.4)return e((p-.15)/.25);if(p<.62)return 1;if(p<.88)return 1-e((p-.62)/.26);return 0}
+let figRAF=0,figLast=0;
+function figLoop(ts){figRAF=requestAnimationFrame(figLoop);if(reduceMotion||document.hidden||ts-figLast<33)return;figLast=ts;
+  const els=document.querySelectorAll('.fig[data-fig]');if(!els.length)return;const t=cycleT(ts);
+  els.forEach(el=>{el.innerHTML=figSVG(el.dataset.fig,t)})}
+if(!reduceMotion)figRAF=requestAnimationFrame(figLoop);
+function openDemo(id){const d=DEMO[id],e=EX[id];if(!d||!e)return;const sh=$('#sheet');
+  const credit='ภาพเคลื่อนไหว: Iron Log'+(d.ek?` · ภาพอ้างอิง: <a href="https://github.com/everkinetic/data" target="_blank" rel="noopener">Everkinetic</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>`:'');
+  sh.innerHTML=`<div class="in" role="dialog" aria-modal="true" aria-labelledby="demoTtl">
+    <div class="spread"><div><h2 id="demoTtl">${esc(e.n)}</h2><p class="small muted">${esc(e.th)} · ${e.sets}×${e.lo}–${e.hi}</p></div><button class="iconbtn" id="demoClose" aria-label="ปิด">×</button></div>
+    ${reduceMotion?`<div class="pair"><div>${artHTML(id,'a')}<span>ท่าเริ่ม</span></div><div>${artHTML(id,'b')}<span>ท่าสุด</span></div></div>`:`<div class="big-art">${artHTML(id)}</div>`}
+    <h3>จุดสำคัญ</h3><ul class="cues">${d.c.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+    ${d.near?`<p class="note">${esc(d.near)}</p>`:''}${refHTML(id)}
+    <p class="credit">${credit}</p></div>`;
+  sh.hidden=false;$('#demoClose').focus()}
+function closeDemo(){const sh=$('#sheet');sh.hidden=true;sh.innerHTML=''}
+$('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet'||e.target.closest('#demoClose'))closeDemo()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#sheet').hidden)closeDemo()});
+
+/* ---------- views ---------- */
+function header(){const isToday=S.date===today();return `
+  <div class="top"><div class="brand" aria-label="Iron Log"><i></i><i></i><i></i>IRON LOG</div>${syncChip()}</div>
+  <div class="datebar"><button class="iconbtn" data-act="prev" aria-label="วันก่อนหน้า">‹</button>
+    <span class="d">${fmtDate(S.date)}${isToday?' · วันนี้':''}</span>
+    ${isToday?'':'<button class="chipbtn" data-act="today">กลับวันนี้</button>'}
+    <button class="iconbtn" data-act="next" aria-label="วันถัดไป">›</button></div>`}
+
+function meter(label,val,tgt,unit,mode){const pct=tgt?Math.min(100,val/tgt*100):0;let cls='';
+  if(mode==='kcal'){const r=val/tgt;cls=r>1.1?'bad':r>1.02?'warn':r>=.9?'good':''}
+  else if(mode==='protein'){cls=val>=tgt*.9?'good':''}
+  return `<div class="meter"><div class="spread"><span>${label}</span><span><b class="num">${Math.round(val)}</b> / ${tgt} ${unit}</span></div>
+  <div class="track"><div class="fill ${cls}" style="width:${pct}%"></div></div></div>`}
+
+function viewToday(){const D=day(),T=targets(),tot=totals(D),ws=weights();const ma=maAt(ws,tIdx(S.date));
+  const code=sessionFor(S.date);const P=code&&PROGRAM[code];
+  let train;
+  if(!P)train=`<p class="muted">วันพัก · เดินเล่นเบาๆ ยืดเหยียด นอนให้พอ 7 ชม.</p>`;
+  else if(code==='Z2'){const c=D.cardio;train=`<div class="spread"><span><span class="disc green"></span> Zone 2 cardio</span><span class="num">${c&&c.min?c.min+' นาที':'ยังไม่บันทึก'}</span></div>`}
+  else{const total=P.ex.reduce((s,e)=>s+e.sets,0);const done=(D.sets||[]).filter(s=>s.done&&P.ex.some(e=>e.id===s.ex)).length;
+    train=`<div class="spread"><span><span class="disc ${P.plate}"></span> <b>${P.name}</b> <span class="muted small">${P.th}</span></span><span class="num">${done}/${total} เซ็ต</span></div>
+    <div class="track"><div class="fill ${done>=total?'good':''}" style="width:${Math.min(100,done/total*100)}%"></div></div>`}
+  const left=T.kcal-tot.kcal;
+  return `${header()}
+  <section class="card"><div class="spread"><h2>พลังงานวันนี้</h2><span class="pill ${left<0?'bad':''}">${left>=0?'เหลือ '+Math.round(left):'เกิน '+Math.round(-left)} kcal</span></div>
+    <div class="big" id="kcalBig">${Math.round(tot.kcal)}<small>/ ${T.kcal} kcal</small></div>
+    ${meter('Protein',tot.p,T.protein,'g','protein')}${meter('Carb',tot.c,T.carb,'g')}${meter('Fat',tot.f,T.fat,'g')}
+    <button class="btn ghost" data-go="food">+ บันทึกอาหาร / ถ่ายรูป</button></section>
+  <section class="card"><h2>ร่างกาย</h2>
+    <div class="grid2"><div class="field"><label for="wIn">น้ำหนัก (kg) ตอนเช้า</label><input id="wIn" inputmode="decimal" data-body="weight" value="${D.weight??''}" placeholder="เช่น 82.0"></div>
+    <div class="field"><label for="waistIn">รอบเอว (cm) ระดับสะดือ</label><input id="waistIn" inputmode="decimal" data-body="waist" value="${D.waist??''}" placeholder="สัปดาห์ละครั้ง"></div></div>
+    <p class="small muted" id="maTxt">${ma?`ค่าเฉลี่ย 7 วัน: <b class="num">${f1(ma)}</b> kg · เป้า ${S.profile.goalWeight} kg`:'ชั่งหลังตื่นนอน เข้าห้องน้ำแล้ว ก่อนกินอะไร'}</p></section>
+  <section class="card"><div class="spread"><h2>เวทวันนี้</h2>${P&&code!=='Z2'?'<button class="linkbtn" data-go="train">เปิดโปรแกรม ›</button>':''}</div>${train}</section>`}
+
+function viewTrain(){const D=day();const code=S.sess||sessionFor(S.date)||'UA';const P=PROGRAM[code];
+  const chips=ORDER.map(k=>`<button class="sess" data-sess="${k}" aria-pressed="${k===code}"><b><span class="disc ${PROGRAM[k].plate}"></span>${k}</b><span>${PROGRAM[k].wd} ${PROGRAM[k].name}</span></button>`).join('');
+  let body='';
+  if(code==='Z2'){body=cardioCard(D,true)}
+  else{body=`<p class="note"><b>${P.name}</b> · ${P.th}<br>อุ่นเครื่อง 5 นาที + เซ็ตเบา 2 เซ็ตก่อนท่าหลัก · ท่าหลักหยุดก่อนหมดแรง 1–2 ครั้ง (RIR 1–2) · ครบเพดาน rep ทุกเซ็ต → เพิ่มน้ำหนักครั้งหน้า</p>`
+    +P.ex.map(e=>exCard(e,D)).join('')+cardioCard(D,false)}
+  return `${header()}<div class="sessions" role="group" aria-label="เลือกโปรแกรม">${chips}</div>${body}`}
+
+function exCard(e,D){const sg=suggest(e,S.date);const mine=(D.sets||[]).filter(s=>s.ex===e.id);
+  const n=Math.max(e.sets,mine.reduce((m,s)=>Math.max(m,s.i+1),0));
+  const best=mine.filter(s=>s.done&&s.w>0&&s.r>0&&s.r<=12).reduce((m,s)=>Math.max(m,e1rm(s.w,s.r)),0);
+  let hint;if(sg.lp){hint=`ครั้งก่อน ${sd(sg.lp.date)}: ${sg.lp.sets.map(s=>`${s.w}×${s.r}`).join(', ')} → วันนี้ <b>${sg.w} kg</b>${sg.up?' <span class="up">▲ เพิ่มน้ำหนัก</span>':''}`}
+  else hint=`ครั้งแรก: เลือกน้ำหนักที่ทำได้ ${e.hi} ครั้งโดยยังเหลือแรง 2–3 ครั้ง`;
+  const wNow=(mine.find(s=>s.w)||{}).w||sg.w;let plates='';
+  if(e.bar&&wNow){const pl=platesFor(wNow);if(pl)plates=`<div class="plates" aria-label="แผ่นต่อข้าง"><span class="bar"></span>${pl.out.map(p=>`<span class="p" style="height:${PLATE_H[p]}px;background:${PLATE_COLOR[p]}"></span>`).join('')}<span class="lbl">บาร์ 20 + ข้างละ ${pl.out.join(' + ')}${pl.rem>0.01?' (ปัดเศษ)':''}</span></div>`}
+  const rows=Array.from({length:n},(_,i)=>{const s=mine.find(x=>x.i===i)||{};const prev=sg.lp&&sg.lp.sets.find(x=>x.i===i);
+    const phW=sg.w??'kg';const phR=prev?prev.r:e.lo;
+    return `<div class="set ${s.done?'done':''}" data-ex="${e.id}" data-i="${i}"><span class="idx">${i+1}</span>
+      <input inputmode="decimal" aria-label="น้ำหนักเซ็ต ${i+1}" id="w-${e.id}-${i}" data-k="w" value="${s.w??''}" placeholder="${phW}">
+      <span class="x">×</span><input inputmode="numeric" aria-label="จำนวนครั้งเซ็ต ${i+1}" id="r-${e.id}-${i}" data-k="r" value="${s.r??''}" placeholder="${phR}">
+      <button class="chk" data-chk aria-pressed="${!!s.done}" aria-label="เสร็จเซ็ต ${i+1}">✓</button></div>`}).join('');
+  return `<article class="card ex"><header>${FIGS[e.id]?`<button class="demo" data-demo="${e.id}" aria-label="ดูท่า ${esc(e.n)}">${artHTML(e.id)}</button>`:''}<div class="ttl"><h3>${e.n}</h3><p class="th">${e.th} · ${e.sets}×${e.lo}–${e.hi} · พัก ${Math.floor(e.rest/60)}:${pad(e.rest%60)}</p>
+    ${best?`<span class="pill">e1RM ${Math.round(best)}</span>`:''}</div></header>
+    <p class="hint">${hint}</p>${plates}
+    <div class="colhead"><span>#</span><span>KG</span><span></span><span>REPS</span><span></span></div>
+    <div class="sets">${rows}</div><button class="linkbtn" data-addset="${e.id}">+ เพิ่มเซ็ต</button></article>`}
+
+function cardioCard(D,main){const c=D.cardio||{};const hrmax=Math.round(208-0.7*S.profile.age);
+  return `<section class="card"><div class="spread"><h2>${main?'Zone 2 Cardio':'Cardio (ถ้ามี)'}</h2><span class="disc green"></span></div>
+  ${main?`<p class="note">Zone 2 ≈ <b>${Math.round(hrmax*.6)}–${Math.round(hrmax*.7)} bpm</b> (60–70% HRmax, Tanaka: 208 − 0.7×อายุ = ${hrmax}) · เดินเร็วจนพูดเป็นประโยคได้แต่ร้องเพลงไม่ได้</p>`:''}
+  <div class="grid2"><div class="field"><label for="cMin">นาที</label><input id="cMin" inputmode="numeric" data-cardio="min" value="${c.min??''}" placeholder="45"></div>
+  <div class="field"><label for="cHr">HR เฉลี่ย (bpm)</label><input id="cHr" inputmode="numeric" data-cardio="hr" value="${c.hr??''}" placeholder="ไม่บังคับ"></div></div></section>`}
+
+function viewFood(){const D=day(),T=targets(),tot=totals(D);
+  const mine=jobs.filter(j=>j.date===S.date);
+  const quick=ph=>`<form class="quick" id="quick"><input id="aiHint" type="text" autocomplete="off" enterkeyhint="send" aria-label="พิมพ์เมนูอาหาร" placeholder="${ph}"><button class="btn" type="submit">เพิ่ม</button></form>`;
+  const ai=S.canAI
+    ?`${S.canImg?`<label class="photo" for="photo"><span class="cam" aria-hidden="true"></span><span>ถ่ายรูป / เลือกรูปอาหาร<small>บันทึกให้อัตโนมัติ แก้ทีหลังได้</small></span></label><input type="file" id="photo" accept="image/*" hidden>`:''}
+      ${quick('เช่น กะเพราหมูสับ ไข่ดาว ข้าว 1.5 ทัพพี')}
+      <p class="small muted">${S.canImg?'พิมพ์รายละเอียดไว้ก่อนเลือกรูป = ใช้ประกอบการประเมินรูปนั้น':'พิมพ์เมนูและปริมาณ แล้วกดเพิ่ม'}</p>`
+    :`${quick('พิมพ์ชื่อเมนู เช่น ข้าวมันไก่')}
+      <p class="note">ตอนนี้เติมค่าได้เฉพาะเมนูที่ตรงกับเมนูลัด · ใส่ API key ที่ <button class="linkbtn" data-go="progress" style="display:inline;padding:0">PROGRESS › ตั้งค่า AI</button> เพื่อถ่ายรูปประเมิน kcal</p>`;
+  const msg=S.aiErr?`<p class="err" role="status">${esc(S.aiErr)}</p>`:S.aiMsg?`<p class="ok" role="status">${S.aiMsg}</p>`:'';
+  const slotSel=`<select id="slot" aria-label="มื้อ">${SLOT_ORDER.map(k=>`<option value="${k}" ${S.slot===k?'selected':''}>${SLOTS[k]}</option>`).join('')}</select>`;
+  const pend=mine.map(j=>`<div class="meal pending"><div class="nm">${j.url?`<img src="${j.url}" alt="">`:''}<span>${esc(j.label)}<small>กำลังประเมิน · ${SLOTS[j.slot]}</small></span></div><span class="k">…</span><button class="del" data-canceljob="${j.id}" aria-label="ยกเลิก">×</button></div>`).join('');
+  const meals=SLOT_ORDER.map(k=>{const ms=(D.meals||[]).filter(m=>m.slot===k);if(!ms.length)return '';const sk=ms.reduce((s,m)=>s+(+m.kcal||0),0);
+    return `<div class="slot-h"><span>${SLOTS[k]}</span><span>${Math.round(sk)} kcal</span></div>`+ms.map(mealRow).join('')}).join('');
+  return `${header()}
+  <section class="card"><div class="spread"><h2>${Math.round(tot.kcal)} / ${T.kcal} kcal</h2><span class="pill ${tot.p>=T.protein*.9?'good':''}">Protein ${Math.round(tot.p)}/${T.protein} g</span></div>
+    <div class="row"><span class="small muted">บันทึกเข้ามื้อ</span><div style="flex:1;min-width:120px">${slotSel}</div></div></section>
+  <section class="card"><h2>เพิ่มอาหาร</h2>${ai}${msg}</section>
+  <section class="card"><div class="spread"><h2>รายการวันนี้</h2><span class="small muted">แตะรายการเพื่อแก้</span></div>${pend}${meals||(pend?'':'<div class="empty">ยังไม่มีรายการ ถ่ายรูปมื้อแรก พิมพ์เมนู หรือแตะเมนูลัดด้านล่าง</div>')}</section>
+  <section class="card"><h2>เมนูลัด</h2><p class="small muted">ค่าประมาณต่อ 1 ที่ อ้างอิงฐานข้อมูลอาหารไทย แตะครั้งเดียวบันทึกทันที</p>
+    <div class="chips">${PRESETS.map((p,i)=>`<button data-preset="${i}">${esc(p.name)} <span>${p.kcal}</span></button>`).join('')}</div>
+    <details><summary>กรอกเองทั้งหมด</summary><div class="draft" style="margin-top:10px">
+      <div class="field"><label for="mName">ชื่อเมนู</label><input id="mName" type="text"></div>
+      <div class="ditem" style="border:0;padding:0">${['kcal','p','c','f'].map(k=>`<div class="field"><label for="m_${k}">${LBL[k]}</label><input id="m_${k}" inputmode="decimal"></div>`).join('')}</div>
+      <button class="btn ghost" id="mAdd">เพิ่ม</button></div></details></section>`}
+
+function mealRow(m){const open=S.editMeal===m.id;const tag=m.src==='ai'?(m.edited?' · AI (แก้แล้ว)':' · AI'):'';
+  const low=m.conf==='low'&&!m.edited?' · <span class="lowc">มั่นใจต่ำ</span>':'';
+  return `<div class="meal"><button class="nm" data-editmeal="${m.id}" aria-expanded="${open}">${esc(m.name)}<small>${m.portion?esc(m.portion)+' · ':''}P ${f1(m.p||0)} · C ${f1(m.c||0)} · F ${f1(m.f||0)}${tag}${low}</small></button><span class="k" id="k-${m.id}">${Math.round(m.kcal)}</span><button class="del" data-delmeal="${m.id}" aria-label="ลบ ${esc(m.name)}">×</button></div>
+  ${open?`<div class="medit">
+    <div class="field full"><label for="me-name-${m.id}">ชื่อเมนู</label><input id="me-name-${m.id}" type="text" data-me="name" data-mid="${m.id}" value="${esc(m.name)}"></div>
+    ${['kcal','p','c','f'].map(k=>`<div class="field"><label for="me-${k}-${m.id}">${LBL[k]}</label><input id="me-${k}-${m.id}" inputmode="decimal" data-me="${k}" data-mid="${m.id}" value="${k==='kcal'?Math.round(m.kcal):f1(m[k]||0)}"></div>`).join('')}
+    <div class="field full"><label for="me-slot-${m.id}">มื้อ</label><select id="me-slot-${m.id}" data-me="slot" data-mid="${m.id}">${SLOT_ORDER.map(k=>`<option value="${k}" ${m.slot===k?'selected':''}>${SLOTS[k]}</option>`).join('')}</select></div>
+    <div class="row full"><span class="small muted">ปริมาณ</span>${[['0.5','×½'],['1.5','×1.5'],['2','×2']].map(([f,l])=>`<button class="chipbtn" data-scale="${m.id}" data-f="${f}">${l}</button>`).join('')}<button class="btn" data-medone style="margin-left:auto">เสร็จ</button></div>
+  </div>`:''}`}
+
+function lineChart({series,target,xMin,xMax,unit,h=170}){
+  const W=340,H=h,L=36,R=34,T=12,B=22;let ys=[];series.forEach(s=>s.pts.forEach(p=>ys.push(p[1])));if(target!=null)ys.push(target);
+  let lo=Math.min(...ys),hi=Math.max(...ys);if(hi-lo<1){lo-=1;hi+=1}
+  const step=(()=>{const r=(hi-lo)/3,p=10**Math.floor(Math.log10(r)),f=r/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p})();
+  const y0=Math.floor(lo/step)*step,y1=Math.ceil(hi/step)*step;const span=Math.max(1,xMax-xMin);
+  const x=t=>L+(t-xMin)/span*(W-L-R),y=v=>T+(1-(v-y0)/(y1-y0))*(H-T-B);let g='';
+  for(let v=y0;v<=y1+1e-9;v+=step){g+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+3}" text-anchor="end">${+v.toFixed(1)}</text>`}
+  const xl=[xMin,Math.round((xMin+xMax)/2),xMax].filter((v,i,a)=>a.indexOf(v)===i);
+  xl.forEach((t,i)=>{g+=`<text x="${x(t)}" y="${H-6}" text-anchor="${i===0?'start':i===xl.length-1?'end':'middle'}">${sd(fromIdx(t))}</text>`});
+  if(target!=null)g+=`<line class="tgt" x1="${L}" x2="${W-R}" y1="${y(target)}" y2="${y(target)}"/><text class="tgtlbl" x="${W-R+4}" y="${y(target)+3}">เป้า</text>`;
+  for(const s of series){if(s.kind==='dots')g+=s.pts.map(p=>`<circle class="raw" cx="${x(p[0])}" cy="${y(p[1])}" r="2.6"/>`).join('');
+    else if(s.pts.length){const d=s.pts.map((p,i)=>`${i?'L':'M'}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('');
+      const last=s.pts[s.pts.length-1];
+      g+=`<path class="area" d="${d}L${x(last[0]).toFixed(1)},${H-B}L${x(s.pts[0][0]).toFixed(1)},${H-B}Z"/><path class="main" d="${d}"/><circle class="end" cx="${x(last[0])}" cy="${y(last[1])}" r="4.5"/><text class="endlbl" x="${Math.min(W-2,x(last[0])+6)}" y="${y(last[1])-8}" text-anchor="end">${f1(last[1])}${unit||''}</text>`}}
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img">${g}</svg>`}
+
+function barChart(rows,target){const W=340,H=150,L=36,R=34,T=10,B=22;const mx=Math.max(target*1.25,...rows.map(r=>r.v));
+  const y=v=>T+(1-v/mx)*(H-T-B);const bw=(W-L-R)/rows.length;let g='';
+  [0,Math.round(mx/2/100)*100,Math.round(mx/100)*100].forEach(v=>{if(v<=mx)g+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+3}" text-anchor="end">${v}</text>`});
+  rows.forEach((r,i)=>{const cx=L+i*bw;if(r.v>0){const cls=r.v>target*1.1?'b-over':r.v<target*.7?'b-under':'b-ok';g+=`<rect class="${cls}" x="${(cx+bw*.18).toFixed(1)}" y="${y(r.v).toFixed(1)}" width="${(bw*.64).toFixed(1)}" height="${(H-B-y(r.v)).toFixed(1)}" rx="2"/>`}
+    if(i%3===0||i===rows.length-1)g+=`<text x="${(cx+bw/2).toFixed(1)}" y="${H-6}" text-anchor="middle">${sd(r.d)}</text>`});
+  g+=`<line class="tgt" x1="${L}" x2="${W-R}" y1="${y(target)}" y2="${y(target)}"/><text class="tgtlbl" x="${W-R+4}" y="${y(target)+3}">เป้า</text>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img">${g}</svg>`}
+
+function viewProgress(){const T=targets(),p=S.profile,ws=weights(),wa=waists();const rate=weeklyRate();const ad=adaptive();
+  const tEnd=tIdx(today());
+  const last14=Array.from({length:14},(_,i)=>fromIdx(tEnd-13+i));
+  const logged=last14.filter(d=>S.days[d]&&(S.days[d].meals||[]).length);
+  const pHit=logged.filter(d=>totals(S.days[d]).p>=T.protein*.9).length;
+  const ma=ws.length?maAt(ws,ws[ws.length-1].t):null;
+  let rateCls='',rateTxt='—';if(rate!=null){rateTxt=(rate>0?'+':'')+rate.toFixed(2);rateCls=rate<-1?'warn':rate<=-.2?'good':rate<=.1?'':'bad'}
+  const rateNote=rate==null?'ต้องมีน้ำหนัก ≥ 4 วันใน 14 วัน':rate<-1?'ลดเร็วไป เสี่ยงเสียกล้าม':rate<=-.2?'อยู่ในช่วงเป้า −0.25 ถึง −0.75':rate<=.1?'คงที่ · ลด kcal อีก 100–150':'ขึ้น · ตรวจการบันทึกอาหาร';
+  const kpi=`<div class="kpis">
+    <div class="kpi"><span class="eyebrow">น้ำหนักเฉลี่ย 7 วัน</span><span class="v">${ma?f1(ma):'—'}<small>kg</small></span><span class="small muted">${ws.length?`เริ่ม ${f1(ws[0].w)} · เป้า ${p.goalWeight}`:'ยังไม่มีข้อมูล'}</span></div>
+    <div class="kpi"><span class="eyebrow">อัตราเปลี่ยน</span><span class="v">${rateTxt}<small>kg/สป.</small></span><span class="pill ${rateCls}">${rateNote}</span></div>
+    <div class="kpi"><span class="eyebrow">Protein ถึงเป้า</span><span class="v">${pHit}/${logged.length}<small>วัน</small></span><span class="small muted">จากวันที่บันทึกใน 14 วัน</span></div>
+    <div class="kpi"><span class="eyebrow">TDEE จริง</span><span class="v">${ad.tdee?ad.tdee:'—'}<small>kcal</small></span><span class="small muted">${ad.tdee?`สูตรคาด ${T.tdee}`:esc(ad.need)}</span></div></div>`;
+  let rec='';if(ad.tdee){const sug=Math.max(T.bmr,r10(ad.tdee-p.deficit));
+    rec=`<section class="card"><h2>ปรับเป้าจากข้อมูลจริง</h2><p class="small">กินเฉลี่ย <b class="num">${ad.mean}</b> kcal × ${ad.n} วัน · น้ำหนักเปลี่ยน <b class="num">${(ad.slope*7).toFixed(2)}</b> kg/สป. → TDEE ≈ <b class="num">${ad.tdee}</b> kcal</p>
+    <p class="formula">TDEE = intake − (Δweight/day × 7700)</p>
+    <div class="row"><span>เป้าใหม่ที่แนะนำ <b class="num">${sug}</b> kcal</span>${p.kcalOverride===sug?'<span class="pill good">ใช้อยู่</span>':`<button class="btn" data-setkcal="${sug}">ใช้ค่านี้</button>`}</div></section>`}
+  const wChart=ws.length>=2?(()=>{const xs=ws.filter(q=>q.t>tEnd-90);const xMin=xs[0].t,xMax=Math.max(xs[xs.length-1].t,xMin+6);
+    const maPts=xs.map(q=>[q.t,maAt(ws,q.t)]);return lineChart({series:[{kind:'dots',pts:xs.map(q=>[q.t,q.w])},{kind:'line',pts:maPts}],target:p.goalWeight,xMin,xMax,unit:''})})()
+    :'<div class="empty">ชั่งน้ำหนักทุกเช้า 3 วันขึ้นไปเพื่อเห็นเส้นแนวโน้ม<br><span class="small">จุด = ค่าดิบ · เส้น = ค่าเฉลี่ย 7 วัน</span></div>';
+  const waistChart=wa.length>=2?lineChart({series:[{kind:'line',pts:wa.map(q=>[q.t,q.w])}],xMin:wa[0].t,xMax:Math.max(wa[wa.length-1].t,wa[0].t+6),unit:'',h:140}):'<div class="empty">วัดรอบเอวสัปดาห์ละครั้ง (เช้าวันจันทร์) ที่ระดับสะดือ</div>';
+  const liftsWith=MAIN_LIFTS.concat(Object.keys(EX).filter(k=>!MAIN_LIFTS.includes(k))).filter(id=>e1rmSeries(id).length);
+  const sel=S.e1rmEx&&liftsWith.includes(S.e1rmEx)?S.e1rmEx:liftsWith[0];const es=sel?e1rmSeries(sel):[];
+  const eChart=es.length>=2?lineChart({series:[{kind:'line',pts:es.map(q=>[q.t,q.w])}],xMin:es[0].t,xMax:Math.max(es[es.length-1].t,es[0].t+6),unit:'',h:150})
+    :`<div class="empty">${es.length?'บันทึกท่านี้อีก 1 ครั้งเพื่อเห็นกราฟ':'ติ๊ก ✓ เซ็ตในหน้าเวทเพื่อเริ่มติดตามแรง'}</div>`;
+  const rows=last14.map(d=>({d,v:S.days[d]?totals(S.days[d]).kcal:0}));
+  const kChart=logged.length?barChart(rows,T.kcal):'<div class="empty">ยังไม่มีการบันทึกอาหารใน 14 วัน</div>';
+  const actOpts=[[1.2,'นั่งทำงาน ไม่ออกกำลัง'],[1.375,'เบา 1–3 วัน/สป.'],[1.55,'ปานกลาง 3–5 วัน/สป.'],[1.725,'หนัก 6–7 วัน/สป.']];
+  return `${header()}${kpi}${rec}
+  <section class="card"><div class="spread"><h2>น้ำหนัก</h2><span class="small muted">90 วันล่าสุด</span></div>${wChart}</section>
+  <section class="card"><div class="spread"><h2>แรง (e1RM)</h2>${liftsWith.length?`<div style="min-width:0;max-width:60%"><select id="e1sel" aria-label="เลือกท่า">${liftsWith.map(id=>`<option value="${id}" ${id===sel?'selected':''}>${EX[id].n}</option>`).join('')}</select></div>`:''}</div>
+    ${eChart}<p class="formula">e1RM = w × (1 + reps/30)  · Epley, ใช้เฉพาะเซ็ต ≤ 12 reps</p>
+    <p class="small muted">ลดน้ำหนักได้ดี = น้ำหนักลง + เอวลด + e1RM คงที่หรือขึ้น · เซ็ตสัปดาห์นี้ <b class="num">${weekSets()}</b></p></section>
+  <section class="card"><div class="spread"><h2>รอบเอว</h2><span class="small muted">cm</span></div>${waistChart}</section>
+  <section class="card"><div class="spread"><h2>พลังงาน 14 วัน</h2><span class="small muted">kcal/วัน</span></div>${kChart}
+    <p class="small muted">น้ำเงิน = ใกล้เป้า · แดง = เกิน 10% · เทา = ต่ำกว่า 70% (อาจบันทึกไม่ครบ)</p></section>
+  <section class="card"><h2>ตั้งค่าเป้าหมาย</h2>
+    <div class="grid2">
+      <div class="field"><label for="pAge">อายุ</label><input id="pAge" inputmode="numeric" data-prof="age" value="${p.age}"></div>
+      <div class="field"><label for="pH">ส่วนสูง (cm)</label><input id="pH" inputmode="decimal" data-prof="height" value="${p.height}"></div>
+      <div class="field"><label for="pGoal">น้ำหนักเป้าหมาย (kg)</label><input id="pGoal" inputmode="decimal" data-prof="goalWeight" value="${p.goalWeight}"></div>
+      <div class="field"><label for="pAct">กิจกรรม</label><select id="pAct" data-prof="activity">${actOpts.map(([v,t])=>`<option value="${v}" ${p.activity==v?'selected':''}>${v} · ${t}</option>`).join('')}</select></div>
+      <div class="field"><label for="pDef">Deficit (kcal)</label><select id="pDef" data-prof="deficit">${[300,400,500,600].map(v=>`<option ${p.deficit==v?'selected':''}>${v}</option>`).join('')}</select></div>
+      <div class="field"><label for="pPpk">Protein (g/kg)</label><select id="pPpk" data-prof="ppk">${[1.6,1.8,2.0,2.2].map(v=>`<option value="${v}" ${p.ppk==v?'selected':''}>${v.toFixed(1)}</option>`).join('')}</select></div>
+      <div class="field" style="grid-column:1/-1"><label for="pKcal">กำหนด kcal เอง (เว้นว่าง = คำนวณอัตโนมัติ)</label><input id="pKcal" inputmode="numeric" data-prof="kcalOverride" value="${p.kcalOverride??''}" placeholder="${r10(T.tdee-p.deficit)}"></div>
+    </div>
+    <p class="formula">BMR = 10×${f1(T.w)} + 6.25×${p.height} − 5×${p.age} + 5 = ${T.bmr}  (Mifflin-St Jeor)</p>
+    <p class="formula">TDEE = ${T.bmr} × ${p.activity} ≈ ${T.tdee} → เป้า ${T.kcal} kcal</p>
+    <p class="small">เป้าวันละ <b class="num">${T.kcal}</b> kcal · P <b class="num">${T.protein}</b> g · C <b class="num">${T.carb}</b> g · F <b class="num">${T.fat}</b> g</p></section>
+  ${settingsCards()}
+  <p class="small muted" style="text-align:center">ตัวเลขเป็นค่าประมาณเพื่อการวางแผน ไม่ใช่คำแนะนำทางการแพทย์</p>`}
+function settingsCards(){const c=aiCfg();const m=c.model||'claude-haiku-5-5';
+  return `<section class="card"><h2>ตั้งค่า AI · ถ่ายรูปอาหาร</h2>
+    <div class="field"><label for="aiKey">Anthropic API key</label><input id="aiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-..." value="${esc(c.key||'')}"></div>
+    <div class="field"><label for="aiModel">โมเดล</label><select id="aiModel">${[['claude-haiku-5-5','Haiku 5.5 · เร็ว ค่าใช้จ่ายต่ำ'],['claude-sonnet-5-5','Sonnet 5.5 · ประเมินละเอียดกว่า']].map(([v,l])=>`<option value="${v}" ${m===v?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="row"><button class="btn" id="aiSave">บันทึก</button><button class="btn ghost" id="aiTest">ทดสอบ</button><button class="btn ghost" id="aiDel">ลบ key</button></div>
+    <p class="small" id="aiStat" role="status">${c.key?'<span class="ok">ตั้งค่าแล้ว</span>':'<span class="muted">ยังไม่ได้ตั้งค่า</span>'}</p>
+    <p class="small muted">key เก็บในเครื่องนี้เท่านั้น และส่งตรงไปที่ api.anthropic.com · ค่าใช้จ่ายคิดตามการใช้งานใน Anthropic Console</p></section>
+  <section class="card"><h2>สำรองข้อมูล</h2><p class="small muted">ข้อมูลทั้งหมดเก็บในเครื่องนี้ ควร export ไว้ใน Files หรือ iCloud Drive เป็นระยะ</p>
+    <div class="row"><button class="btn ghost" id="expBtn">Export JSON</button><label class="btn ghost" for="impFile">Import JSON</label><input type="file" id="impFile" accept="application/json,.json" hidden></div>
+    <p class="small" id="bkStat" role="status"></p></section>`}
+async function exportData(){const data={app:'iron-log',version:1,exportedAt:new Date().toISOString(),profile:S.profile,days:S.days};
+  const name=`iron-log-${today()}.json`;const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+  try{const file=new File([blob],name,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return 'ส่งออกแล้ว'}}catch(e){if(e&&e.name==='AbortError')return ''}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);return 'ดาวน์โหลด '+name}
+function importData(text){const j=JSON.parse(text);if(!j||j.app!=='iron-log'||typeof j.days!=='object')throw new Error('ไม่ใช่ไฟล์ของ Iron Log');
+  let n=0;for(const [d,v] of Object.entries(j.days)){if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&v&&typeof v==='object'){S.days[d]={kind:'day',date:d,weight:null,waist:null,meals:[],sets:[],cardio:null,session:null,...v,date:d};n++}}
+  if(j.profile&&typeof j.profile==='object')S.profile={...DEF_PROFILE,...j.profile};saveLocal();return n}
+
+/* ---------- render ---------- */
+const VIEWS={today:viewToday,train:viewTrain,food:viewFood,progress:viewProgress};
+function render(){pendingRender=false;$('#app').innerHTML=VIEWS[S.view]();
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===S.view?'page':'false'))}
+function go(v){S.view=v;render();window.scrollTo(0,0)}
+
+/* ---------- AI via Anthropic API (key stored on this device only) ---------- */
+const AIK='ironlog.ai';
+function aiCfg(){try{return JSON.parse(localStorage.getItem(AIK)||'{}')||{}}catch(e){return {}}}
+function saveAiCfg(c){try{localStorage.setItem(AIK,JSON.stringify(c))}catch(e){}}
+function initAI(){const c=aiCfg();if(c.key){sample={json:apiJSON};S.canAI=true;S.canImg=true}else{sample=null;S.canAI=false;S.canImg=false}}
+async function imgToB64(blob){const url=URL.createObjectURL(blob);try{
+  const im=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej({code:'image_rejected'});i.src=url});
+  const M=1280,k=Math.min(1,M/Math.max(im.naturalWidth,im.naturalHeight));const c=document.createElement('canvas');
+  c.width=Math.max(1,Math.round(im.naturalWidth*k));c.height=Math.max(1,Math.round(im.naturalHeight*k));
+  c.getContext('2d').drawImage(im,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.82).split(',')[1]}finally{URL.revokeObjectURL(url)}}
+function parseJSONLoose(t){try{return JSON.parse(t)}catch(e){}const m=t.match(/```(?:json)?\s*([\s\S]*?)```/);if(m){try{return JSON.parse(m[1])}catch(e){}}
+  const i=t.search(/[\[{]/),j=Math.max(t.lastIndexOf('}'),t.lastIndexOf(']'));if(i>=0&&j>i){try{return JSON.parse(t.slice(i,j+1))}catch(e){}}throw {code:'invalid_json',text:t}}
+async function apiJSON(prompt,opts={}){const c=aiCfg();if(!c.key)throw {code:'no_key'};
+  const content=[];for(const im of (opts.images||[]))content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:await imgToB64(im)}});
+  content.push({type:'text',text:prompt});let r;
+  try{r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal:opts.signal,
+    headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:c.model||'claude-haiku-5-5',max_tokens:1200,messages:[{role:'user',content}]})})}
+  catch(e){if(e&&e.name==='AbortError')throw {code:'cancelled'};throw {code:navigator.onLine===false?'offline':'upstream_error'}}
+  if(!r.ok){let msg='';try{msg=(await r.json()).error.message}catch(e){}
+    throw {code:r.status===401||r.status===403?'bad_key':r.status===429||r.status===529?'rate_limited':r.status===404||(r.status===400&&/model/i.test(msg))?'bad_model':'upstream_error',message:msg}}
+  const j=await r.json();return parseJSONLoose((j.content||[]).filter(x=>x.type==='text').map(x=>x.text).join(''))}
+
+/* ---------- AI: auto-add, edit later ---------- */
+let jobs=[];
+const LBL={kcal:'kcal',p:'Protein g',c:'Carb g',f:'Fat g'};
+const AI_ERR={not_granted:'ยังไม่ได้อนุญาตให้หน้านี้ใช้ Claude ตอนนี้ใช้เมนูลัดหรือกรอกเองได้',sampling_disabled:'บัญชีนี้ใช้ AI ในหน้านี้ไม่ได้',
+  rate_limited:'ใช้งานถี่เกินไป รอสักครู่แล้วลองใหม่',image_rejected:'รูปนี้ใช้ไม่ได้ ลองรูป JPG/PNG อื่น',images_unavailable:'มุมมองนี้ส่งรูปไม่ได้ พิมพ์ชื่อเมนูแทน',
+  invalid_json:'อ่านผลไม่ได้ ลองอีกครั้ง',refused:'ประเมินรายการนี้ไม่ได้',empty_completion:'ไม่ได้คำตอบ ลองอีกครั้ง',session_expired:'กรุณาเข้าสู่ระบบ Claude ใหม่',no_key:'ยังไม่ได้ใส่ API key',bad_key:'API key ไม่ถูกต้อง ตรวจที่ PROGRESS › ตั้งค่า AI',offline:'ออฟไลน์อยู่',bad_model:'ใช้รุ่นโมเดลนี้ไม่ได้ ลองเปลี่ยนรุ่นในตั้งค่า AI'};
+function aiPrompt(img,hint){return `คุณเป็นนักกำหนดอาหารที่รู้จักอาหารไทยดี ประเมินพลังงานและสารอาหารของอาหาร${img?'ในรูป':'ที่ผู้ใช้พิมพ์'}
+${hint?'ผู้ใช้ระบุ: '+hint:''}
+- แยกเป็นรายการ (ข้าว / กับข้าว / เครื่องดื่ม) ${img?'ประเมินปริมาณจากขนาดจาน ช้อน ที่เห็น':'ถ้าไม่ระบุปริมาณ ใช้ 1 ที่มาตรฐานร้านอาหารไทย'}
+- อ้างอิงค่าแบบฐานข้อมูลอาหารไทย (INMUCAL / Thai FCD) และนับน้ำมันที่ใช้ปรุง
+- ไม่แน่ใจให้ใช้ค่ากลาง ไม่ต่ำเกินจริง
+ตอบเป็น JSON เท่านั้น:
+{"items":[{"name":"ข้าวมันไก่","portion":"1 จาน ~350 g","kcal":596,"protein":25,"carb":70,"fat":23}],"confidence":"low|medium|high"}
+ถ้าไม่ใช่อาหาร ให้ "items":[]`}
+function matchPreset(q){q=String(q||'').replace(/\s+/g,'');if(!q)return null;
+  return PRESETS.find(p=>{const n=p.name.replace(/\s+/g,'');const core=n.split(/\d/)[0];return n.includes(q)||(core.length>=3&&q.includes(core))})||null}
+function fallbackAdd(text,date,slot){const p=matchPreset(text);const D=day(date);
+  if(p){D.meals.push({id:uid(),slot,name:p.name,kcal:p.kcal,p:p.p,c:p.c,f:p.f,src:'preset'});saveDay(date);return `บันทึก ${esc(p.name)} ${p.kcal} kcal (ค่าจากเมนูลัด)`}
+  const id=uid();D.meals.push({id,slot,name:text.slice(0,60),kcal:0,p:0,c:0,f:0,src:'manual'});saveDay(date);if(date===S.date)S.editMeal=id;return `เพิ่ม ${esc(text)} แล้ว ใส่ตัวเลขในรายการด้านล่าง`}
+function submitText(){const el=$('#aiHint');const text=(el&&el.value||'').trim();if(!text){el&&el.focus();return}el.value='';
+  if(!sample||!S.canAI){S.aiErr='';S.aiMsg=fallbackAdd(text,S.date,S.slot);safeRender();return}queueAI(null,text)}
+function queueAI(img,hint){S.aiErr='';S.aiMsg='';let url=null;if(img){try{url=URL.createObjectURL(img)}catch(e){}}
+  const job={id:uid(),date:S.date,slot:S.slot,img,hint,url,label:hint||'รูปอาหาร',ctl:new AbortController()};jobs.push(job);safeRender();runJob(job)}
+async function runJob(job){
+  try{const opts={signal:job.ctl.signal,modelTier:job.img?'default':'quick'};if(job.img)opts.images=[job.img];
+    const res=await sample.json(aiPrompt(!!job.img,job.hint),opts);
+    const conf=['low','medium','high'].includes(res&&res.confidence)?res.confidence:null;
+    const items=(Array.isArray(res&&res.items)?res.items:[]).slice(0,8).map(it=>({id:uid(),slot:job.slot,name:String(it.name||'อาหาร').slice(0,60),portion:String(it.portion||'').slice(0,60),
+      kcal:Math.max(0,Math.round(num(it.kcal)||0)),p:+(num(it.protein)||0).toFixed(1),c:+(num(it.carb)||0).toFixed(1),f:+(num(it.fat)||0).toFixed(1),src:'ai',conf}));
+    if(!items.length){if(job.img)S.aiErr='ไม่พบอาหารในรูป ลองถ่ายให้เห็นจานชัดขึ้น';else S.aiMsg=fallbackAdd(job.hint,job.date,job.slot)}
+    else{const D=day(job.date);D.meals.push(...items);saveDay(job.date);const k=items.reduce((a,i)=>a+i.kcal,0);
+      S.aiMsg=`บันทึกเข้า${SLOTS[job.slot]}แล้ว ${items.length} รายการ · <b>${k}</b> kcal${conf==='low'?' · มั่นใจต่ำ ตรวจตัวเลขด้วย':''}`}
+  }catch(e){const c=e&&e.code;
+    if(c==='images_unavailable')S.canImg=false;
+    if(c==='not_granted'||c==='sampling_disabled')S.canAI=false;if(c==='image_rejected'&&!job.hint)S.aiErr='อ่านรูปนี้ไม่ได้ ลองถ่ายใหม่ หรือเลือกรูป JPG';
+    if(c!=='cancelled'){S.aiErr=AI_ERR[c]||'เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง';if(job.hint&&!job.img){S.aiErr='';S.aiMsg=(AI_ERR[c]||'AI ไม่ตอบ')+' · '+fallbackAdd(job.hint,job.date,job.slot)}}}
+  finally{jobs=jobs.filter(j=>j!==job);if(job.url){try{URL.revokeObjectURL(job.url)}catch(e){}}if(S.view==='food'||S.view==='today')safeRender()}}
+
+/* ---------- events ---------- */
+const app=$('#app');
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)go(b.dataset.view)});
+app.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;
+  const a=t.dataset;
+  if(a.act==='prev'){S.date=shiftDate(S.date,-1);S.sess=null;render()}
+  else if(a.act==='next'){S.date=shiftDate(S.date,1);S.sess=null;render()}
+  else if(a.act==='today'){S.date=today();S.sess=null;render()}
+  else if(a.go)go(a.go);
+  else if(a.demo)openDemo(a.demo);
+  else if(a.sess){S.sess=a.sess;const D=day();const def=WD_SESSION[dow(S.date)]||null;D.session=a.sess===def?null:a.sess;saveDay();render()}
+  else if('chk' in a){const row=t.closest('.set');const ex=EX[row.dataset.ex],i=+row.dataset.i;const D=day();
+    let s=D.sets.find(x=>x.ex===ex.id&&x.i===i);if(!s){s={ex:ex.id,i,w:null,r:null,done:false};D.sets.push(s)}
+    const wi=row.querySelector('[data-k=w]'),ri=row.querySelector('[data-k=r]');
+    if(!s.done){if(s.w==null){const v=num(wi.placeholder);if(v!=null){s.w=v;wi.value=v}}if(s.r==null){const v=num(ri.placeholder);if(v!=null){s.r=v;ri.value=v}}
+      if(s.w==null||s.r==null){(s.w==null?wi:ri).focus();return}}
+    s.done=!s.done;row.classList.toggle('done',s.done);t.setAttribute('aria-pressed',s.done);saveDay();if(s.done)startRest(ex.rest,ex.n,ex.id)}
+  else if(a.addset){const D=day();const mine=D.sets.filter(s=>s.ex===a.addset);const n=Math.max(EX[a.addset].sets,mine.reduce((m,s)=>Math.max(m,s.i+1),0));
+    D.sets.push({ex:a.addset,i:n,w:null,r:null,done:false});saveDay();render()}
+  else if(a.preset!=null){const p=PRESETS[+a.preset];S.aiErr='';S.aiMsg=`บันทึก ${esc(p.name)} ${p.kcal} kcal เข้า${SLOTS[S.slot]}`;addMeal({...p,src:'preset'})}
+  else if(a.delmeal){const D=day();D.meals=D.meals.filter(m=>m.id!==a.delmeal);if(S.editMeal===a.delmeal)S.editMeal=null;saveDay();render()}
+  else if(a.canceljob){const j=jobs.find(x=>x.id===a.canceljob);if(j)j.ctl.abort()}
+  else if(a.scale){const m=day().meals.find(x=>x.id===a.scale);if(m){const f=+a.f;m.kcal=Math.round(m.kcal*f);['p','c','f'].forEach(k=>m[k]=+((m[k]||0)*f).toFixed(1));m.edited=true;saveDay();render()}}
+  else if(a.editmeal){S.editMeal=S.editMeal===a.editmeal?null:a.editmeal;render()}
+  else if('medone' in a){S.editMeal=null;render()}
+  else if(a.setkcal){S.profile.kcalOverride=+a.setkcal;saveProfile();render()}
+  else if(t.id==='mAdd'){const name=$('#mName').value.trim();const kcal=num($('#m_kcal').value);if(!name||kcal==null){($('#mName').value?$('#m_kcal'):$('#mName')).focus();return}
+    addMeal({name,kcal,p:num($('#m_p').value)||0,c:num($('#m_c').value)||0,f:num($('#m_f').value)||0,src:'manual'});render()}
+  else if(t.id==='aiSave'){const key=$('#aiKey').value.trim(),model=$('#aiModel').value;saveAiCfg({key,model});initAI();$('#aiStat').innerHTML=key?'<span class="ok">บันทึกแล้ว</span>':'<span class="muted">ยังไม่ได้ตั้งค่า</span>'}
+  else if(t.id==='aiDel'){saveAiCfg({});initAI();render()}
+  else if(t.id==='aiTest'){const key=$('#aiKey').value.trim();if(!key){$('#aiKey').focus();return}saveAiCfg({key,model:$('#aiModel').value});initAI();
+    const st=$('#aiStat');st.textContent='กำลังทดสอบ…';apiJSON('Reply with only this JSON: {"ok":true}').then(r=>{st.innerHTML=r&&r.ok?'<span class="ok">เชื่อมต่อได้ ✓</span>':'<span class="err">ตอบกลับผิดรูปแบบ</span>'})
+      .catch(e=>{st.innerHTML=`<span class="err">${esc(AI_ERR[e&&e.code]||'เชื่อมต่อไม่สำเร็จ')}${e&&e.message?' · '+esc(e.message):''}</span>`})}
+  else if(t.id==='expBtn'){exportData().then(m=>{const b=$('#bkStat');if(b)b.textContent=m}).catch(()=>{const b=$('#bkStat');if(b)b.textContent='ส่งออกไม่สำเร็จ'})}
+});
+function addMeal(m,noSave){const D=day();D.meals.push({id:uid(),slot:S.slot,name:m.name,kcal:+m.kcal||0,p:+m.p||0,c:+m.c||0,f:+m.f||0,src:m.src});if(!noSave){saveDay();if(S.view!=='food'||m.src!=='preset')render();else refreshFoodHead()}}
+function refreshFoodHead(){const y=window.scrollY;render();window.scrollTo(0,y)}
+app.addEventListener('submit',e=>{if(e.target.id==='quick'){e.preventDefault();submitText()}});
+
+app.addEventListener('input',e=>{const t=e.target;const D=day();
+  if(t.dataset.body){D[t.dataset.body]=num(t.value);saveDay();const ws=weights();const ma=maAt(ws,tIdx(S.date));const m=$('#maTxt');if(m&&ma)m.innerHTML=`ค่าเฉลี่ย 7 วัน: <b class="num">${f1(ma)}</b> kg · เป้า ${S.profile.goalWeight} kg`}
+  else if(t.dataset.k&&t.closest('.set')){const row=t.closest('.set');const ex=row.dataset.ex,i=+row.dataset.i;let s=D.sets.find(x=>x.ex===ex&&x.i===i);
+    if(!s){s={ex,i,w:null,r:null,done:false};D.sets.push(s)}s[t.dataset.k]=num(t.value);saveDay()}
+  else if(t.dataset.cardio){D.cardio={...(D.cardio||{}),[t.dataset.cardio]:num(t.value)};saveDay()}
+  else if(t.dataset.me&&t.dataset.me!=='slot'){const m=D.meals.find(x=>x.id===t.dataset.mid);if(m){const k=t.dataset.me;m[k]=k==='name'?t.value:(num(t.value)||0);m.edited=true;saveDay();
+    if(k==='kcal'){const el=document.getElementById('k-'+m.id);if(el)el.textContent=Math.round(m.kcal)}}}
+});
+app.addEventListener('change',e=>{const t=e.target;
+  if(t.id==='slot'){S.slot=t.value;const b=$('#aiAdd');if(b)b.textContent='บันทึกเข้า'+SLOTS[S.slot]}
+  else if(t.id==='e1sel'){S.e1rmEx=t.value;render()}
+  else if(t.id==='photo'){const f=t.files&&t.files[0];if(f&&sample){const h=$('#aiHint');const hint=(h&&h.value||'').trim();if(h)h.value='';t.value='';queueAI(f,hint)}}
+  else if(t.dataset.me==='slot'){const m=day().meals.find(x=>x.id===t.dataset.mid);if(m){m.slot=t.value;saveDay();render()}}
+  else if(t.id==='impFile'){const f=t.files&&t.files[0];if(!f)return;f.text().then(txt=>{const n=importData(txt);render();const b=$('#bkStat');if(b)b.textContent=`นำเข้าแล้ว ${n} วัน`})
+    .catch(err=>{const b=$('#bkStat');if(b)b.textContent='นำเข้าไม่สำเร็จ: '+(err&&err.message||'ไฟล์ไม่ถูกต้อง')})}
+  else if(t.dataset.prof){const k=t.dataset.prof;const v=num(t.value);if(k==='kcalOverride')S.profile.kcalOverride=v&&v>=1000?Math.round(v):null;else if(v!=null)S.profile[k]=v;saveProfile();render()}
+});
+
+/* ---------- rest timer ---------- */
+let restEnd=0,restDur=1,restTick=null;
+function nextUp(exId){const code=S.sess||sessionFor(S.date);const P=PROGRAM[code];if(!P)return null;const D=day();const i=P.ex.findIndex(e=>e.id===exId);if(i<0)return null;
+  for(let k=i;k<P.ex.length;k++){const e=P.ex[k];const mine=D.sets.filter(x=>x.ex===e.id);const n=Math.max(e.sets,mine.reduce((m,x)=>Math.max(m,x.i+1),0));
+    for(let j=0;j<n;j++){const s=mine.find(x=>x.i===j);if(!s||!s.done)return {e,set:j+1,same:k===i}}}return null}
+function startRest(sec,name,exId){restEnd=Date.now()+sec*1000;restDur=sec;const r=$('#rest');r.hidden=false;r.classList.remove('done');$('#restLbl').textContent='พัก · '+name;
+  const nx=exId?nextUp(exId):null;$('#restNext').innerHTML=nx&&FIGS[nx.e.id]?`<button type="button" class="nx" data-demo="${nx.e.id}" aria-label="ดูท่า ${esc(nx.e.n)}">${artHTML(nx.e.id)}</button>`:'';
+  $('#restNextTxt').textContent=nx?`ถัดไป: ${nx.e.n} · เซ็ต ${nx.set}${nx.same?'':' (ท่าใหม่)'}`:(exId?'ครบทุกเซ็ตของวันนี้แล้ว':'');clearInterval(restTick);restTick=setInterval(updRest,250);updRest()}
+function updRest(){const left=Math.max(0,(restEnd-Date.now())/1000);const s=Math.ceil(left);$('#restBar').style.width=(left/restDur*100)+'%';
+  if(left<=0){clearInterval(restTick);$('#rest').classList.add('done');$('#restTime').textContent='GO';$('#restLbl').textContent='ได้เวลาเซ็ตถัดไป';return}
+  $('#restTime').textContent=`${Math.floor(s/60)}:${pad(s%60)}`}
+$('#rest').addEventListener('click',e=>{const b=e.target.closest('[data-demo]');if(b)openDemo(b.dataset.demo)});
+$('#restClose').addEventListener('click',()=>{clearInterval(restTick);$('#rest').hidden=true});
+
+boot();
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
