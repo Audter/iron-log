@@ -162,6 +162,18 @@ details summary{cursor:pointer;font-weight:600;list-style-position:inside}
 .cam{width:38px;height:38px;border-radius:50%;background:var(--accent);flex:none;position:relative}
 .cam::after{content:"";position:absolute;inset:11px;border-radius:50%;border:2.5px solid var(--accent-ink)}
 .quick{display:flex;gap:8px}.quick input{flex:1}
+.sugg{display:flex;flex-direction:column;gap:6px}
+.sg{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:var(--sunk);border-radius:10px;padding:9px 12px;cursor:pointer;color:inherit;font-size:15px}
+.sg:first-child{border-color:var(--accent)}
+.sg .sn{flex:1;min-width:0;overflow-wrap:anywhere}.sg .sn i{font-style:normal;font-size:11px;color:var(--good);background:var(--good-soft);border-radius:999px;padding:1px 7px;margin-left:4px}
+.sg small{display:block;font-size:12px;color:var(--muted)}
+.sg .sk{font-family:var(--display);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.sg.ai{background:transparent;border-style:dashed}.sg.ai .sn{font-size:14px;color:var(--muted)}
+.sg.multi{background:var(--accent-soft)}
+.qty{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.qty input{width:64px;text-align:center;font-family:var(--display);font-size:18px;font-weight:600}
+.stp{width:38px;height:38px;border-radius:9px;border:1px solid var(--line);background:var(--sunk);font-size:20px;cursor:pointer}
+.chipbtn.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .meal button.nm{border:0;background:none;text-align:left;padding:4px 0;cursor:pointer;color:inherit;font-size:15px}
 .meal.pending{opacity:.7}.meal.pending .nm{display:flex;gap:8px;align-items:center}
 .meal.pending img{width:38px;height:38px;object-fit:cover;border-radius:6px;flex:none}
@@ -296,22 +308,137 @@ const WD_SESSION={1:'UA',2:'LA',3:'UB',4:'LB',5:'Z2'};
 const EX={};ORDER.forEach(k=>PROGRAM[k].ex.forEach(e=>EX[e.id]=e));
 const MAIN_LIFTS=['bench','squat','deadlift','ohp','row','rdl','hipthrust'];
 
-const PRESETS=[
-  {name:'ข้าวมันไก่',kcal:596,p:25,c:70,f:23},
-  {name:'กะเพราไก่ไข่ดาวราดข้าว',kcal:630,p:28,c:70,f:26},
-  {name:'ผัดไทยกุ้งสด',kcal:545,p:20,c:70,f:20},
-  {name:'ก๋วยเตี๋ยวน้ำใสลูกชิ้น',kcal:350,p:18,c:45,f:10},
-  {name:'ข้าวต้มปลา',kcal:220,p:15,c:30,f:4},
-  {name:'ส้มตำไทย',kcal:150,p:4,c:25,f:4},
-  {name:'อกไก่ย่าง 100 g',kcal:165,p:31,c:0,f:4},
-  {name:'ข้าวสวย 1 ทัพพี',kcal:80,p:1.5,c:18,f:0.2},
-  {name:'ข้าวเหนียว 1 ห่อ',kcal:220,p:4.5,c:50,f:0.5},
-  {name:'ไข่ต้ม 1 ฟอง',kcal:75,p:6.5,c:0.5,f:5},
-  {name:'เวย์โปรตีน 1 สกู๊ป',kcal:120,p:24,c:3,f:1.5},
-  {name:'นมจืด 200 ml',kcal:130,p:6.5,c:10,f:7},
-  {name:'กาแฟเย็น',kcal:250,p:4,c:40,f:8},
-  {name:'กล้วยหอม 1 ลูก',kcal:105,p:1.3,c:27,f:0.4}
+/* Thai food database: [name, portion, kcal, protein, carb, fat, aliases, grams-of-portion]. Approximate values (INMUCAL / Thai FCD style) */
+const FOODDB=[
+['ข้าวสวย','1 ทัพพี ~55 g',80,1.5,18,0.2,'ข้าว|ข้าวเปล่า|ข้าวขาว',55],
+['ข้าวสวย 1 จาน','3 ทัพพี',240,4.5,54,0.5,'ข้าวจาน'],
+['ข้าวกล้อง','1 ทัพพี',75,1.6,16,0.6,'',55],
+['ข้าวไรซ์เบอร์รี่','1 ทัพพี',75,1.8,16,0.7,'ไรซ์เบอร์รี่',55],
+['ข้าวเหนียว','1 ห่อ ~100 g',220,4.5,50,0.5,'ข้าวเหนียวนึ่ง',100],
+['ขนมปังโฮลวีต','1 แผ่น',70,3.5,12,1,'ขนมปังโฮลวีท|โฮลวีต'],
+['ขนมปังขาว','1 แผ่น',75,2.5,14,1,'ขนมปัง'],
+['โจ๊กหมู','1 ชาม',250,12,35,7,'โจ๊ก'],
+['ข้าวต้มปลา','1 ชาม',220,15,30,4,''],
+['ข้าวต้มหมู','1 ชาม',250,14,30,7,'ข้าวต้ม'],
+['ข้าวมันไก่','1 จาน',596,25,70,23,'ข้าวมันไก่ต้ม'],
+['ข้าวมันไก่ทอด','1 จาน',690,25,75,32,''],
+['ข้าวขาหมู','1 จาน',690,26,70,33,'ขาหมู'],
+['ข้าวหมูแดง','1 จาน',540,22,70,18,'หมูแดง'],
+['ข้าวหมูกรอบ','1 จาน',650,20,70,32,''],
+['ข้าวผัดหมู','1 จาน',560,17,75,20,'ข้าวผัด'],
+['ข้าวผัดกุ้ง','1 จาน',540,18,72,18,''],
+['ข้าวผัดปู','1 จาน',520,20,70,16,''],
+['ข้าวผัดอเมริกัน','1 จาน',790,25,85,38,''],
+['กะเพราไก่ไข่ดาวราดข้าว','1 จาน',630,28,70,26,'กะเพราไก่ไข่ดาว'],
+['กะเพราหมูสับราดข้าว','1 จาน',580,24,68,22,'กะเพราหมูสับ|กะเพราหมู|ผัดกะเพรา|กะเพรา|กระเพรา|กระเพราหมูสับ'],
+['กะเพราไก่ราดข้าว','1 จาน',550,26,68,18,'กะเพราไก่|กระเพราไก่'],
+['กะเพราหมูกรอบราดข้าว','1 จาน',700,20,70,38,'กะเพราหมูกรอบ|กระเพราหมูกรอบ'],
+['ผัดกะเพราหมูสับ (กับข้าว)','1 จาน ไม่รวมข้าว',330,20,10,23,''],
+['ข้าวไข่เจียว','1 จาน',590,17,60,30,''],
+['ข้าวผัดพริกแกงไก่','1 จาน',560,24,70,20,'ผัดพริกแกง'],
+['ข้าวคลุกกะปิ','1 จาน',610,20,80,22,''],
+['ข้าวหน้าเป็ด','1 จาน',600,25,75,22,'เป็ดย่าง'],
+['ข้าวไข่ข้นกุ้ง','1 จาน',550,24,62,22,'ไข่ข้น'],
+['ข้าวราดแกงเขียวหวานไก่','1 จาน',550,22,65,22,'ข้าวแกงเขียวหวาน'],
+['ข้าวแกงกะหรี่ไก่','1 จาน',560,20,72,20,'แกงกะหรี่'],
+['ข้าวกล่อง 7-Eleven กะเพรา','1 กล่อง',450,18,65,13,'ข้าวกล่อง|เซเว่น'],
+['ข้าวเหนียวหมูปิ้ง','ข้าวเหนียว 1 ห่อ + 2 ไม้',400,18,58,10,''],
+['ราดหน้าหมู','1 จาน',400,18,50,14,'ราดหน้า'],
+['ผัดซีอิ๊วหมู','1 จาน',680,20,85,28,'ผัดซีอิ๊ว|ผัดซีอิ้ว'],
+['ผัดไทยกุ้งสด','1 จาน',545,20,70,20,'ผัดไทย'],
+['ก๋วยเตี๋ยวน้ำใสลูกชิ้น','1 ชาม',350,18,45,10,'ก๋วยเตี๋ยว|ก๋วยเตี๋ยวน้ำใส|ก๋วยเตี๋ยวลูกชิ้น'],
+['ก๋วยเตี๋ยวต้มยำ','1 ชาม',400,20,48,14,''],
+['ก๋วยเตี๋ยวเรือ','1 ชามเล็ก',300,15,38,9,''],
+['เย็นตาโฟ','1 ชาม',400,18,50,14,'ก๋วยเตี๋ยวเย็นตาโฟ'],
+['บะหมี่หมูแดงน้ำ','1 ชาม',380,20,48,12,'บะหมี่น้ำ|บะหมี่'],
+['บะหมี่แห้งหมูแดง','1 ชาม',450,20,55,16,'บะหมี่แห้ง'],
+['เกาเหลาหมู','1 ชาม',200,22,4,10,'เกาเหลา'],
+['ขนมจีนน้ำยา','1 จาน',450,15,65,14,'ขนมจีน'],
+['ข้าวซอยไก่','1 ชาม',650,30,55,35,'ข้าวซอย'],
+['สุกี้น้ำรวมมิตร','1 ชาม',300,22,30,8,'สุกี้|สุกี้น้ำ'],
+['สุกี้แห้ง','1 จาน',400,24,35,16,''],
+['บะหมี่กึ่งสำเร็จรูป','1 ห่อ',300,6,40,13,'มาม่า|ไวไว|ยำยำ'],
+['สปาเก็ตตี้ผัดขี้เมา','1 จาน',600,20,75,24,'สปาเก็ตตี้|สปาเกตตี้'],
+['ไข่ดาว','1 ฟอง',110,6,0.5,9,''],
+['ไข่ต้ม','1 ฟอง',75,6.5,0.5,5,'ไข่'],
+['ไข่เจียว','1 ฟอง',190,6.5,1,18,''],
+['ไข่ตุ๋น','1 ถ้วย',90,7,2,6,''],
+['ไข่ขาวต้ม','1 ฟอง',17,3.6,0.2,0.1,'ไข่ขาว'],
+['ต้มยำกุ้งน้ำใส','1 ถ้วย',100,14,6,3,'ต้มยำ|ต้มยำกุ้ง'],
+['ต้มยำกุ้งน้ำข้น','1 ถ้วย',220,15,8,15,''],
+['ต้มข่าไก่','1 ถ้วย',280,15,8,21,'ต้มข่า'],
+['แกงจืดเต้าหู้หมูสับ','1 ถ้วย',140,12,6,7,'แกงจืด'],
+['แกงเขียวหวานไก่','1 ถ้วย ไม่รวมข้าว',300,18,10,22,'แกงเขียวหวาน'],
+['แกงส้ม','1 ถ้วย',120,12,10,3,''],
+['ผัดผักบุ้ง','1 จาน',150,3,8,12,'ผักบุ้ง'],
+['ผัดผักรวม','1 จาน',150,5,10,10,'ผัดผัก'],
+['สลัดผัก น้ำสลัดใส','1 จาน',120,3,10,8,'สลัด|สลัดผัก'],
+['สลัดอกไก่','1 จาน',280,30,12,12,''],
+['ไก่ย่าง','1 ชิ้น (น่อง/สะโพก)',200,24,0,11,''],
+['ไก่ทอด','1 ชิ้น',280,22,8,18,''],
+['หมูปิ้ง','1 ไม้',90,7,4,5,''],
+['คอหมูย่าง','1 จาน ~100 g',330,17,2,28,'คอหมู',100],
+['ลาบหมู','1 จาน',220,22,6,12,'ลาบ'],
+['น้ำตกหมู','1 จาน',230,22,5,13,'น้ำตก'],
+['ส้มตำไทย','1 จาน',150,4,25,4,'ส้มตำ|ตำไทย'],
+['ส้มตำปูปลาร้า','1 จาน',120,5,20,2,'ตำปูปลาร้า|ตำลาว'],
+['ยำวุ้นเส้น','1 จาน',220,15,25,6,'ยำ'],
+['ปลานึ่งมะนาว','1 จาน',250,40,8,6,'ปลานึ่ง'],
+['หมูทอดกระเทียม','1 จาน ไม่รวมข้าว',380,25,6,28,'หมูกระเทียม'],
+['ทอดมันปลา','5 ชิ้น',280,18,15,16,'ทอดมัน'],
+['ปอเปี๊ยะทอด','3 ชิ้น',240,5,24,14,'ปอเปี๊ยะ'],
+['ไส้กรอกอีสาน','1 ไม้ (3 ลูก)',180,8,8,13,'ไส้กรอก'],
+['ลูกชิ้นปิ้ง','1 ไม้',90,6,6,4,'ลูกชิ้น'],
+['หมูสะเต๊ะ','5 ไม้ ไม่รวมน้ำจิ้ม',300,22,10,19,'สะเต๊ะ'],
+['หมูกระทะ','1 มื้อ (ทั่วไป)',1100,55,60,70,'ปิ้งย่าง'],
+['อกไก่ย่าง/ต้ม','100 g',165,31,0,3.6,'อกไก่|อกไก่ต้ม|อกไก่ย่าง',100],
+['อกไก่พร้อมทาน 7-Eleven','1 ซอง',110,23,2,1.5,'อกไก่ซอง|อกไก่เซเว่น'],
+['สันในหมู','100 g',140,22,0,5,'สันใน',100],
+['หมูสับ','100 g',215,18,0,16,'',100],
+['ปลาแซลมอน','100 g',208,20,0,13,'แซลมอน',100],
+['ปลานิล','100 g สุก',128,26,0,2.7,'ปลา',100],
+['กุ้ง','100 g',99,24,0.2,0.3,'',100],
+['เต้าหู้แข็ง','100 g',145,15,3,8.7,'เต้าหู้',100],
+['เวย์โปรตีน','1 สกู๊ป',120,24,3,1.5,'เวย์|whey|โปรตีน'],
+['นมจืด','200 ml',130,6.5,10,7,'นม|นมสด'],
+['นมจืดพร่องมันเนย','200 ml',90,7,10,2.5,'นมพร่องมัน|นมไขมันต่ำ'],
+['นมถั่วเหลือง หวานน้อย','1 กล่อง 250 ml',140,7,18,5,'นมถั่วเหลือง|น้ำเต้าหู้'],
+['กรีกโยเกิร์ต ไขมันต่ำ','100 g',60,10,4,0.4,'กรีกโยเกิร์ต',100],
+['โยเกิร์ตรสธรรมชาติ','1 ถ้วย',100,5,13,3,'โยเกิร์ต'],
+['กาแฟเย็น','1 แก้ว',250,4,40,8,'กาแฟ'],
+['อเมริกาโน่ ไม่หวาน','1 แก้ว',10,0.3,1,0,'อเมริกาโน่|กาแฟดำ|americano'],
+['ลาเต้เย็น','1 แก้ว',180,8,18,8,'ลาเต้|latte'],
+['ชาไทยเย็น','1 แก้ว',300,3,50,10,'ชาเย็น|ชานม'],
+['ชาเขียวเย็น','1 แก้ว',280,3,45,9,'ชาเขียว|ชาเขียวนม'],
+['โกโก้เย็น','1 แก้ว',300,6,48,10,'โกโก้'],
+['น้ำส้มคั้น','1 แก้ว 250 ml',110,1.7,26,0.5,'น้ำส้ม'],
+['น้ำอัดลม','1 กระป๋อง 325 ml',140,0,35,0,'โค้ก|เป๊ปซี่|น้ำแดง'],
+['เบียร์','1 กระป๋อง 330 ml',150,1.5,13,0,''],
+['เบียร์ ขวดใหญ่','620 ml',280,3,24,0,''],
+['ไวน์แดง','1 แก้ว 150 ml',125,0.1,3.8,0,'ไวน์'],
+['กล้วยหอม','1 ลูก',105,1.3,27,0.4,'กล้วย'],
+['กล้วยน้ำว้า','1 ลูก',70,0.9,17,0.2,''],
+['แอปเปิ้ล','1 ลูก',95,0.5,25,0.3,'แอปเปิล'],
+['ส้ม','1 ลูก',60,1.2,15,0.2,''],
+['มะม่วงสุก','1 ลูก',200,2.8,50,1.3,'มะม่วง'],
+['แตงโม','1 จาน ~200 g',60,1.2,15,0.3,''],
+['ฝรั่ง','1 ลูก',120,4.5,25,1.7,''],
+['มะละกอ','1 จาน ~150 g',65,0.7,16,0.4,''],
+['สับปะรด','1 จาน ~150 g',75,0.8,20,0.2,'สัปปะรด'],
+['ข้าวโพดต้ม','1 ฝัก',120,4,26,1.5,'ข้าวโพด'],
+['มันเทศต้ม','100 g',86,1.6,20,0.1,'มันเทศ|มันหวาน',100],
+['ถั่วลิสง','1 กำมือ ~30 g',170,7.5,5,14,'ถั่ว',30],
+['อัลมอนด์','1 กำมือ ~30 g',175,6,6,15,'',30],
+['มันฝรั่งทอด','1 ถุงเล็ก ~25 g',135,1.5,13,8.5,'เลย์|มันฝรั่ง'],
+['ปาท่องโก๋','1 คู่',120,2,13,7,''],
+['ซาลาเปาหมูสับ','1 ลูก',220,8,32,7,'ซาลาเปา'],
+['แซนด์วิช แฮมชีส','1 ชิ้น',260,12,30,10,'แซนด์วิช|แซนวิช'],
+['น้ำมันพืช','1 ช้อนโต๊ะ',120,0,0,13.6,'น้ำมัน'],
+['น้ำตาล','1 ช้อนชา',16,0,4,0,'']
 ];
+const FOOD=FOODDB.map(([name,portion,kcal,p,c,f,al,g])=>({name,portion,kcal,p,c,f,g:g||null,keys:[name,...(al?al.split('|'):[])].map(normQ).filter(k=>k.length>=2)}));
+function normQ(x){return String(x||'').toLowerCase().replace(/[\s\-_.,()\/]+/g,'')}
+const PRESETS=['ข้าวสวย','ไข่ต้ม','อกไก่ย่าง/ต้ม','กะเพราหมูสับราดข้าว','ข้าวมันไก่','ส้มตำไทย','ไก่ย่าง','ข้าวเหนียว','เวย์โปรตีน','นมจืด','กาแฟเย็น','กล้วยหอม'].map(n=>FOOD.find(x=>x.name===n)).filter(Boolean);
 const SLOTS={b:'เช้า',l:'กลางวัน',s:'ว่าง',d:'เย็น'};
 const SLOT_ORDER=['b','l','s','d'];
 const defaultSlot=()=>{const h=new Date().getHours();return h<10?'b':h<15?'l':h<17?'s':'d'};
@@ -630,13 +757,11 @@ function cardioCard(D,main){const c=D.cardio||{};const hrmax=Math.round(208-0.7*
 
 function viewFood(){const D=day(),T=targets(),tot=totals(D);
   const mine=jobs.filter(j=>j.date===S.date);
-  const quick=ph=>`<form class="quick" id="quick"><input id="aiHint" type="text" autocomplete="off" enterkeyhint="send" aria-label="พิมพ์เมนูอาหาร" placeholder="${ph}"><button class="btn" type="submit">เพิ่ม</button></form>`;
-  const ai=S.canAI
-    ?`${S.canImg?`<label class="photo" for="photo"><span class="cam" aria-hidden="true"></span><span>ถ่ายรูป / เลือกรูปอาหาร<small>บันทึกให้อัตโนมัติ แก้ทีหลังได้</small></span></label><input type="file" id="photo" accept="image/*" hidden>`:''}
-      ${quick('เช่น กะเพราหมูสับ ไข่ดาว ข้าว 1.5 ทัพพี')}
-      <p class="small muted">${S.canImg?'พิมพ์รายละเอียดไว้ก่อนเลือกรูป = ใช้ประกอบการประเมินรูปนั้น':'พิมพ์เมนูและปริมาณ แล้วกดเพิ่ม'}</p>`
-    :`${quick('พิมพ์ชื่อเมนู เช่น ข้าวมันไก่')}
-      <p class="note">ตอนนี้เติมค่าได้เฉพาะเมนูที่ตรงกับเมนูลัด · ใส่ API key ที่ <button class="linkbtn" data-go="progress" style="display:inline;padding:0">PROGRESS › ตั้งค่า AI</button> เพื่อถ่ายรูปประเมิน kcal</p>`;
+  const quick=`<form class="quick" id="quick"><input id="aiHint" type="text" autocomplete="off" autocorrect="off" enterkeyhint="done" aria-label="พิมพ์เมนูอาหาร" aria-controls="sugg" placeholder="พิมพ์เมนู เช่น กะเพราหมูสับ ไข่ดาว"><button class="btn" type="submit">เพิ่ม</button></form>
+      <div class="sugg" id="sugg">${quickChips()}</div>`;
+  const ai=`${quick}
+    ${S.canImg?`<label class="photo" for="photo"><span class="cam" aria-hidden="true"></span><span>ถ่ายรูปอาหารให้ AI ประเมิน<small>บันทึกให้อัตโนมัติ แก้ทีหลังได้</small></span></label><input type="file" id="photo" accept="image/*" hidden>`
+      :`<p class="small muted">ถ่ายรูปให้ AI ประเมินได้ เมื่อใส่ API key ที่ <button class="linkbtn" data-go="progress" style="display:inline;padding:0">PROGRESS › ตั้งค่า AI</button></p>`}`;
   const msg=S.aiErr?`<p class="err" role="status">${esc(S.aiErr)}</p>`:S.aiMsg?`<p class="ok" role="status">${S.aiMsg}</p>`:'';
   const slotSel=`<select id="slot" aria-label="มื้อ">${SLOT_ORDER.map(k=>`<option value="${k}" ${S.slot===k?'selected':''}>${SLOTS[k]}</option>`).join('')}</select>`;
   const pend=mine.map(j=>`<div class="meal pending"><div class="nm">${j.url?`<img src="${j.url}" alt="">`:''}<span>${esc(j.label)}<small>กำลังประเมิน · ${SLOTS[j.slot]}</small></span></div><span class="k">…</span><button class="del" data-canceljob="${j.id}" aria-label="ยกเลิก">×</button></div>`).join('');
@@ -646,22 +771,22 @@ function viewFood(){const D=day(),T=targets(),tot=totals(D);
   <section class="card"><div class="spread"><h2>${Math.round(tot.kcal)} / ${T.kcal} kcal</h2><span class="pill ${tot.p>=T.protein*.9?'good':''}">Protein ${Math.round(tot.p)}/${T.protein} g</span></div>
     <div class="row"><span class="small muted">บันทึกเข้ามื้อ</span><div style="flex:1;min-width:120px">${slotSel}</div></div></section>
   <section class="card"><h2>เพิ่มอาหาร</h2>${ai}${msg}</section>
-  <section class="card"><div class="spread"><h2>รายการวันนี้</h2><span class="small muted">แตะรายการเพื่อแก้</span></div>${pend}${meals||(pend?'':'<div class="empty">ยังไม่มีรายการ ถ่ายรูปมื้อแรก พิมพ์เมนู หรือแตะเมนูลัดด้านล่าง</div>')}</section>
-  <section class="card"><h2>เมนูลัด</h2><p class="small muted">ค่าประมาณต่อ 1 ที่ อ้างอิงฐานข้อมูลอาหารไทย แตะครั้งเดียวบันทึกทันที</p>
-    <div class="chips">${PRESETS.map((p,i)=>`<button data-preset="${i}">${esc(p.name)} <span>${p.kcal}</span></button>`).join('')}</div>
+  <section class="card"><div class="spread"><h2>รายการวันนี้</h2><span class="small muted">แตะรายการเพื่อแก้</span></div>${pend}${meals||(pend?'':'<div class="empty">ยังไม่มีรายการ พิมพ์ชื่อเมนูหรือแตะเมนูด้านบน</div>')}</section>
+  <section class="card"><h2>กรอกเอง</h2><p class="small muted">ฐานข้อมูลในแอปมี ${FOOD.length} เมนู ค่าโดยประมาณต่อ 1 ที่ · เมนูที่คุณแก้ตัวเลข แอปจะจำไว้ใช้ครั้งต่อไป (${Object.keys(MYFOODS).length} เมนู)</p>
     <details><summary>กรอกเองทั้งหมด</summary><div class="draft" style="margin-top:10px">
       <div class="field"><label for="mName">ชื่อเมนู</label><input id="mName" type="text"></div>
       <div class="ditem" style="border:0;padding:0">${['kcal','p','c','f'].map(k=>`<div class="field"><label for="m_${k}">${LBL[k]}</label><input id="m_${k}" inputmode="decimal"></div>`).join('')}</div>
       <button class="btn ghost" id="mAdd">เพิ่ม</button></div></details></section>`}
 
-function mealRow(m){const open=S.editMeal===m.id;const tag=m.src==='ai'?(m.edited?' · AI (แก้แล้ว)':' · AI'):'';
+function mealRow(m){const open=S.editMeal===m.id;const SRC={ai:'AI',db:'ฐานข้อมูล',mine:'ของฉัน',preset:'ฐานข้อมูล'};const tag=SRC[m.src]?` · ${SRC[m.src]}${m.edited?' (แก้แล้ว)':''}`:(m.edited?' · แก้แล้ว':'');const q=m.qty||1;
   const low=m.conf==='low'&&!m.edited?' · <span class="lowc">มั่นใจต่ำ</span>':'';
-  return `<div class="meal"><button class="nm" data-editmeal="${m.id}" aria-expanded="${open}">${esc(m.name)}<small>${m.portion?esc(m.portion)+' · ':''}P ${f1(m.p||0)} · C ${f1(m.c||0)} · F ${f1(m.f||0)}${tag}${low}</small></button><span class="k" id="k-${m.id}">${Math.round(m.kcal)}</span><button class="del" data-delmeal="${m.id}" aria-label="ลบ ${esc(m.name)}">×</button></div>
+  return `<div class="meal"><button class="nm" data-editmeal="${m.id}" aria-expanded="${open}">${esc(m.name)}<small>${m.portion?esc(m.portion)+(q!==1?' ×'+q:'')+' · ':(q!==1?'×'+q+' · ':'')}P ${f1(m.p||0)} · C ${f1(m.c||0)} · F ${f1(m.f||0)}${tag}${low}</small></button><span class="k" id="k-${m.id}">${Math.round(m.kcal)}</span><button class="del" data-delmeal="${m.id}" aria-label="ลบ ${esc(m.name)}">×</button></div>
   ${open?`<div class="medit">
     <div class="field full"><label for="me-name-${m.id}">ชื่อเมนู</label><input id="me-name-${m.id}" type="text" data-me="name" data-mid="${m.id}" value="${esc(m.name)}"></div>
-    ${['kcal','p','c','f'].map(k=>`<div class="field"><label for="me-${k}-${m.id}">${LBL[k]}</label><input id="me-${k}-${m.id}" inputmode="decimal" data-me="${k}" data-mid="${m.id}" value="${k==='kcal'?Math.round(m.kcal):f1(m[k]||0)}"></div>`).join('')}
+    ${['kcal','p','c','f'].map(k=>`<div class="field"><label for="me-${k}-${m.id}">${LBL[k]}${q!==1?' รวม':''}</label><input id="me-${k}-${m.id}" inputmode="decimal" data-me="${k}" data-mid="${m.id}" value="${k==='kcal'?Math.round(m.kcal):f1(m[k]||0)}"></div>`).join('')}
     <div class="field full"><label for="me-slot-${m.id}">มื้อ</label><select id="me-slot-${m.id}" data-me="slot" data-mid="${m.id}">${SLOT_ORDER.map(k=>`<option value="${k}" ${m.slot===k?'selected':''}>${SLOTS[k]}</option>`).join('')}</select></div>
-    <div class="row full"><span class="small muted">ปริมาณ</span>${[['0.5','×½'],['1.5','×1.5'],['2','×2']].map(([f,l])=>`<button class="chipbtn" data-scale="${m.id}" data-f="${f}">${l}</button>`).join('')}<button class="btn" data-medone style="margin-left:auto">เสร็จ</button></div>
+    <div class="qty full"><span class="small muted">จำนวนที่</span><button class="stp" data-qstep="${m.id}" data-d="-0.5" aria-label="ลดปริมาณ">−</button><input id="me-qty-${m.id}" inputmode="decimal" data-me="qty" data-mid="${m.id}" value="${q}" aria-label="จำนวนที่"><button class="stp" data-qstep="${m.id}" data-d="0.5" aria-label="เพิ่มปริมาณ">+</button>${[0.5,1,1.5,2].map(v=>`<button class="chipbtn${q===v?' on':''}" data-qset="${m.id}" data-v="${v}">${v===0.5?'½':v}</button>`).join('')}</div>
+    <div class="row full"><span class="small muted">${m.edited?'แก้แล้ว · จะจำค่าต่อ 1 ที่ไว้ใช้ครั้งหน้า':'ตัวเลขเปลี่ยนตามจำนวนที่ แก้ช่องไหนก็ได้'}</span><button class="btn" data-medone style="margin-left:auto">เสร็จ</button></div>
   </div>`:''}`}
 
 function lineChart({series,target,xMin,xMax,unit,h=170}){
@@ -749,13 +874,13 @@ function settingsCards(){const c=aiCfg();const m=c.model||'claude-haiku-5-5';
   <section class="card"><h2>สำรองข้อมูล</h2><p class="small muted">ข้อมูลทั้งหมดเก็บในเครื่องนี้ ควร export ไว้ใน Files หรือ iCloud Drive เป็นระยะ</p>
     <div class="row"><button class="btn ghost" id="expBtn">Export JSON</button><label class="btn ghost" for="impFile">Import JSON</label><input type="file" id="impFile" accept="application/json,.json" hidden></div>
     <p class="small" id="bkStat" role="status"></p></section>`}
-async function exportData(){const data={app:'iron-log',version:1,exportedAt:new Date().toISOString(),profile:S.profile,days:S.days};
+async function exportData(){const data={app:'iron-log',version:1,exportedAt:new Date().toISOString(),profile:S.profile,days:S.days,myFoods:MYFOODS};
   const name=`iron-log-${today()}.json`;const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
   try{const file=new File([blob],name,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return 'ส่งออกแล้ว'}}catch(e){if(e&&e.name==='AbortError')return ''}
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);return 'ดาวน์โหลด '+name}
 function importData(text){const j=JSON.parse(text);if(!j||j.app!=='iron-log'||typeof j.days!=='object')throw new Error('ไม่ใช่ไฟล์ของ Iron Log');
   let n=0;for(const [d,v] of Object.entries(j.days)){if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&v&&typeof v==='object'){S.days[d]={kind:'day',date:d,weight:null,waist:null,meals:[],sets:[],cardio:null,session:null,...v,date:d};n++}}
-  if(j.profile&&typeof j.profile==='object')S.profile={...DEF_PROFILE,...j.profile};saveLocal();return n}
+  if(j.profile&&typeof j.profile==='object')S.profile={...DEF_PROFILE,...j.profile};if(j.myFoods&&typeof j.myFoods==='object'){MYFOODS={...MYFOODS,...j.myFoods};saveMyFoods()}saveLocal();return n}
 
 /* ---------- render ---------- */
 const VIEWS={today:viewToday,train:viewTrain,food:viewFood,progress:viewProgress};
@@ -800,13 +925,63 @@ ${hint?'ผู้ใช้ระบุ: '+hint:''}
 ตอบเป็น JSON เท่านั้น:
 {"items":[{"name":"ข้าวมันไก่","portion":"1 จาน ~350 g","kcal":596,"protein":25,"carb":70,"fat":23}],"confidence":"low|medium|high"}
 ถ้าไม่ใช่อาหาร ให้ "items":[]`}
-function matchPreset(q){q=String(q||'').replace(/\s+/g,'');if(!q)return null;
-  return PRESETS.find(p=>{const n=p.name.replace(/\s+/g,'');const core=n.split(/\d/)[0];return n.includes(q)||(core.length>=3&&q.includes(core))})||null}
-function fallbackAdd(text,date,slot){const p=matchPreset(text);const D=day(date);
-  if(p){D.meals.push({id:uid(),slot,name:p.name,kcal:p.kcal,p:p.p,c:p.c,f:p.f,src:'preset'});saveDay(date);return `บันทึก ${esc(p.name)} ${p.kcal} kcal (ค่าจากเมนูลัด)`}
-  const id=uid();D.meals.push({id,slot,name:text.slice(0,60),kcal:0,p:0,c:0,f:0,src:'manual'});saveDay(date);if(date===S.date)S.editMeal=id;return `เพิ่ม ${esc(text)} แล้ว ใส่ตัวเลขในรายการด้านล่าง`}
-function submitText(){const el=$('#aiHint');const text=(el&&el.value||'').trim();if(!text){el&&el.focus();return}el.value='';
-  if(!sample||!S.canAI){S.aiErr='';S.aiMsg=fallbackAdd(text,S.date,S.slot);safeRender();return}queueAI(null,text)}
+function fallbackAdd(text,date,slot){const id=uid();const D=day(date);D.meals.push({id,slot,name:text.slice(0,60),portion:'',qty:1,base:{kcal:0,p:0,c:0,f:0},kcal:0,p:0,c:0,f:0,src:'manual'});saveDay(date);if(date===S.date)S.editMeal=id;return `เพิ่ม ${esc(text)} แล้ว ใส่ตัวเลขด้านล่าง ครั้งหน้าจะจำค่าให้`}
+/* ---------- food entry: instant nutrients from database, editable ---------- */
+const MFK='ironlog.myfoods';
+function loadMyFoods(){try{return JSON.parse(localStorage.getItem(MFK)||'{}')||{}}catch(e){return {}}}
+let MYFOODS=loadMyFoods();
+function saveMyFoods(){try{localStorage.setItem(MFK,JSON.stringify(MYFOODS))}catch(e){}}
+function myList(){return Object.values(MYFOODS).map(x=>({...x,mine:true,keys:[normQ(x.name)]}))}
+function rememberMeal(m){if(!m||!m.edited||!m.name)return;const q=m.qty||1;const k=normQ(m.name);if(k.length<2)return;
+  MYFOODS[k]={name:m.name.trim().slice(0,60),portion:m.portion||'',kcal:Math.round(m.kcal/q),p:+(m.p/q).toFixed(1),c:+(m.c/q).toFixed(1),f:+(m.f/q).toFixed(1),g:m.g||null,t:Date.now()};saveMyFoods()}
+const UNIT_RE=/(ที่|จาน|ชาม|ถ้วย|แก้ว|ฟอง|ลูก|ชิ้น|ทัพพี|ห่อ|ไม้|สกู๊ป|ซอง|กล่อง|ขวด|กระป๋อง|ฝัก|คู่|ช้อนโต๊ะ|ช้อนชา|กำมือ|ถุง)/;
+function parseQty(text){let t=String(text||'');let qty=null,grams=null;
+  let m=t.match(/(\d+(?:\.\d+)?)\s*(g|กรัม|ก\.)(?![a-zA-Zก-๙])/i);if(m){grams=+m[1];t=t.replace(m[0],' ')}
+  if(!m){m=t.match(/(?:[x×]\s*(\d+(?:\.\d+)?))|(\d+(?:\.\d+)?)(?![-\d.])\s*(?:[x×]|ที่|จาน|ชาม|ถ้วย|แก้ว|ฟอง|ลูก|ชิ้น|ทัพพี|ห่อ|ไม้|สกู๊ป|ซอง|กล่อง|ขวด|กระป๋อง|ฝัก|คู่|ช้อนโต๊ะ|ช้อนชา|กำมือ|ถุง)?/i);
+    if(m){const v=+(m[1]||m[2]);if(v>0&&v<=20){qty=v;t=t.replace(m[0],' ')}}}
+  t=t.replace(/ครึ่ง(ที่|จาน|ชาม|ลูก|ห่อ|ถ้วย|แก้ว)?/g,()=>{qty=qty||0.5;return ' '});
+  return {text:t.trim(),qty,grams}}
+function suggest(text,n=6){const q=normQ(parseQty(text).text);if(q.length<1)return [];
+  const out=[];for(const it of [...myList(),...FOOD]){let best=0;
+    for(const k of it.keys){let sc=0;if(k===q)sc=100;else if(k.startsWith(q))sc=80-Math.min(20,k.length-q.length);else if(k.includes(q))sc=60-Math.min(20,k.length-q.length);else if(q.length>=4&&q.includes(k))sc=40+Math.min(20,k.length);if(sc>best)best=sc}
+    if(best>0)out.push({it,sc:best+(it.mine?15:0)})}
+  const seen=new Set();return out.sort((a,b)=>b.sc-a.sc).filter(x=>{const k=normQ(x.it.name);if(seen.has(k))return false;seen.add(k);return true}).slice(0,n).map(x=>x.it)}
+function coverMatch(text){const raw=normQ(parseQty(text).text);if(raw.length<2)return null;
+  const cands=[];for(const it of [...myList(),...FOOD])for(const k of it.keys){let i=raw.indexOf(k);while(i>=0){cands.push({it,i,len:k.length,mine:it.mine});i=raw.indexOf(k,i+1)}}
+  cands.sort((a,b)=>b.len-a.len||(b.mine?1:0)-(a.mine?1:0));const used=new Array(raw.length).fill(false);const pick=[];
+  for(const c of cands){let ok=true;for(let j=c.i;j<c.i+c.len;j++)if(used[j]){ok=false;break}if(!ok)continue;for(let j=c.i;j<c.i+c.len;j++)used[j]=true;pick.push(c)}
+  const cov=used.filter(Boolean).length/raw.length;if(!pick.length||cov<.6)return null;return pick.sort((a,b)=>a.i-b.i).map(c=>c.it)}
+function mealFrom(it,qty,grams){let q=qty||1;if(grams&&it.g)q=+(grams/it.g).toFixed(2);
+  const portion=(grams&&it.g)?`${grams} g`:it.portion;
+  return {id:uid(),slot:S.slot,name:it.name,portion,qty:q,base:{kcal:it.kcal,p:it.p,c:it.c,f:it.f},g:it.g||null,
+    kcal:Math.round(it.kcal*q),p:+(it.p*q).toFixed(1),c:+(it.c*q).toFixed(1),f:+(it.f*q).toFixed(1),src:it.mine?'mine':'db'}}
+function addFoods(list,date=S.date){const D=day(date);D.meals.push(...list);saveDay(date);
+  if(date===S.date)S.editMeal=list[list.length-1].id;const k=list.reduce((a,m)=>a+m.kcal,0);
+  S.aiErr='';S.aiMsg=`บันทึก ${list.map(m=>esc(m.name)+(m.qty&&m.qty!==1?' ×'+m.qty:'')).join(' + ')} · <b>${k}</b> kcal · แก้ได้ที่รายการด้านล่าง`}
+function blurInput(){const a=document.activeElement;if(a&&a.blur)a.blur()}
+function scrollToEdit(){requestAnimationFrame(()=>{const el=document.querySelector('.medit');if(el)el.scrollIntoView({block:'center',behavior:'smooth'})})}
+function updateSugg(){const el=$('#sugg'),inp=$('#aiHint');if(!el||!inp)return;const txt=inp.value.trim();
+  if(!txt){el.innerHTML=quickChips();return}
+  const {qty,grams}=parseQty(txt);const list=suggest(txt);const multi=coverMatch(txt);
+  const mult=(it)=>grams&&it.g?grams/it.g:(qty||1);
+  let h='';if(multi&&multi.length>1)h+=`<button class="sg multi" data-sgmulti="1"><span class="sn">เพิ่มทั้งหมด: ${multi.map(i=>esc(i.name)).join(' + ')}</span><span class="sk">${multi.reduce((a,i)=>a+i.kcal,0)}</span></button>`;
+  h+=list.map((it,i)=>{const k=Math.round(it.kcal*mult(it));return `<button class="sg" data-sg="${i}"><span class="sn">${esc(it.name)}${it.mine?' <i>ของฉัน</i>':''}<small>${grams&&it.g?grams+' g':esc(it.portion)+(qty&&qty!==1?' ×'+qty:'')} · P ${f1(it.p*mult(it))} · C ${f1(it.c*mult(it))} · F ${f1(it.f*mult(it))}</small></span><span class="sk">${k}</span></button>`}).join('');
+  if(S.canAI)h+=`<button class="sg ai" data-sgai="1"><span class="sn">ให้ AI ประเมิน “${esc(txt)}”</span></button>`;
+  h+=`<button class="sg ai" data-sgblank="1"><span class="sn">เพิ่ม “${esc(txt)}” แล้วกรอกตัวเลขเอง</span></button>`;
+  el.innerHTML=h;el._list=list;el._multi=multi}
+function quickChips(){const seen=new Set(),rec=[];const ds=Object.keys(S.days).sort().reverse();
+  for(const d of ds){for(const m of (S.days[d].meals||[]).slice().reverse()){const k=normQ(m.name);if(seen.has(k)||!m.name)continue;seen.add(k);rec.push(m);if(rec.length>=8)break}if(rec.length>=8)break}
+  S.quick=[...rec.map(m=>({name:m.name,portion:m.portion||'',kcal:Math.round(m.kcal/(m.qty||1)),p:(m.p||0)/(m.qty||1),c:(m.c||0)/(m.qty||1),f:(m.f||0)/(m.qty||1),g:m.g||null,mine:true})),
+    ...PRESETS.filter(p=>!seen.has(normQ(p.name)))].slice(0,12);
+  return `<p class="small muted">${rec.length?'ล่าสุดและเมนูที่ใช้บ่อย':'เมนูที่ใช้บ่อย'} · แตะครั้งเดียวบันทึกทันที</p><div class="chips">${S.quick.map((p,i)=>`<button data-qf="${i}">${esc(p.name)} <span>${Math.round(p.kcal)}</span></button>`).join('')}</div>`}
+function submitText(){const el=$('#aiHint');const text=(el&&el.value||'').trim();if(!text){el&&el.focus();return}
+  const {qty,grams}=parseQty(text);const multi=coverMatch(text);
+  if(multi){el.value='';blurInput();addFoods(multi.map(it=>mealFrom(it,multi.length===1?qty:null,multi.length===1?grams:null)));render();scrollToEdit();return}
+  const top=suggest(text,1)[0];
+  if(top){el.value='';blurInput();addFoods([mealFrom(top,qty,grams)]);render();scrollToEdit();return}
+  el.value='';blurInput();
+  if(sample&&S.canAI){queueAI(null,text);return}
+  S.aiMsg=fallbackAdd(text,S.date,S.slot);render();scrollToEdit()}
 function queueAI(img,hint){S.aiErr='';S.aiMsg='';let url=null;if(img){try{url=URL.createObjectURL(img)}catch(e){}}
   const job={id:uid(),date:S.date,slot:S.slot,img,hint,url,label:hint||'รูปอาหาร',ctl:new AbortController()};jobs.push(job);safeRender();runJob(job)}
 async function runJob(job){
@@ -814,7 +989,7 @@ async function runJob(job){
     const res=await sample.json(aiPrompt(!!job.img,job.hint),opts);
     const conf=['low','medium','high'].includes(res&&res.confidence)?res.confidence:null;
     const items=(Array.isArray(res&&res.items)?res.items:[]).slice(0,8).map(it=>({id:uid(),slot:job.slot,name:String(it.name||'อาหาร').slice(0,60),portion:String(it.portion||'').slice(0,60),
-      kcal:Math.max(0,Math.round(num(it.kcal)||0)),p:+(num(it.protein)||0).toFixed(1),c:+(num(it.carb)||0).toFixed(1),f:+(num(it.fat)||0).toFixed(1),src:'ai',conf}));
+      kcal:Math.max(0,Math.round(num(it.kcal)||0)),p:+(num(it.protein)||0).toFixed(1),c:+(num(it.carb)||0).toFixed(1),f:+(num(it.fat)||0).toFixed(1),src:'ai',conf,qty:1})).map(m=>({...m,base:{kcal:m.kcal,p:m.p,c:m.c,f:m.f}}));
     if(!items.length){if(job.img)S.aiErr='ไม่พบอาหารในรูป ลองถ่ายให้เห็นจานชัดขึ้น';else S.aiMsg=fallbackAdd(job.hint,job.date,job.slot)}
     else{const D=day(job.date);D.meals.push(...items);saveDay(job.date);const k=items.reduce((a,i)=>a+i.kcal,0);
       S.aiMsg=`บันทึกเข้า${SLOTS[job.slot]}แล้ว ${items.length} รายการ · <b>${k}</b> kcal${conf==='low'?' · มั่นใจต่ำ ตรวจตัวเลขด้วย':''}`}
@@ -843,15 +1018,19 @@ app.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return
     s.done=!s.done;row.classList.toggle('done',s.done);t.setAttribute('aria-pressed',s.done);saveDay();if(s.done)startRest(ex.rest,ex.n,ex.id)}
   else if(a.addset){const D=day();const mine=D.sets.filter(s=>s.ex===a.addset);const n=Math.max(EX[a.addset].sets,mine.reduce((m,s)=>Math.max(m,s.i+1),0));
     D.sets.push({ex:a.addset,i:n,w:null,r:null,done:false});saveDay();render()}
-  else if(a.preset!=null){const p=PRESETS[+a.preset];S.aiErr='';S.aiMsg=`บันทึก ${esc(p.name)} ${p.kcal} kcal เข้า${SLOTS[S.slot]}`;addMeal({...p,src:'preset'})}
+  else if(a.qf!=null){const it=S.quick&&S.quick[+a.qf];if(it){addFoods([mealFrom(it)]);render();scrollToEdit()}}
+  else if(a.sg!=null){const el=$('#sugg');const it=el&&el._list&&el._list[+a.sg];if(it){const {qty,grams}=parseQty($('#aiHint').value);$('#aiHint').value='';blurInput();addFoods([mealFrom(it,qty,grams)]);render();scrollToEdit()}}
+  else if(a.sgmulti){const el=$('#sugg');const L=el&&el._multi;if(L){$('#aiHint').value='';blurInput();addFoods(L.map(it=>mealFrom(it)));render();scrollToEdit()}}
+  else if(a.sgai){const v=$('#aiHint').value.trim();$('#aiHint').value='';blurInput();if(v)queueAI(null,v)}
+  else if(a.sgblank){const v=$('#aiHint').value.trim();$('#aiHint').value='';blurInput();if(v){S.aiMsg=fallbackAdd(v,S.date,S.slot);render();scrollToEdit()}}
+  else if(a.qstep||a.qset){const m=day().meals.find(x=>x.id===(a.qstep||a.qset));if(m){const nq=a.qset?+a.v:Math.max(0.5,+((m.qty||1)+(+a.d)).toFixed(2));setQty(m,nq);saveDay();render()}}
   else if(a.delmeal){const D=day();D.meals=D.meals.filter(m=>m.id!==a.delmeal);if(S.editMeal===a.delmeal)S.editMeal=null;saveDay();render()}
   else if(a.canceljob){const j=jobs.find(x=>x.id===a.canceljob);if(j)j.ctl.abort()}
-  else if(a.scale){const m=day().meals.find(x=>x.id===a.scale);if(m){const f=+a.f;m.kcal=Math.round(m.kcal*f);['p','c','f'].forEach(k=>m[k]=+((m[k]||0)*f).toFixed(1));m.edited=true;saveDay();render()}}
-  else if(a.editmeal){S.editMeal=S.editMeal===a.editmeal?null:a.editmeal;render()}
-  else if('medone' in a){S.editMeal=null;render()}
+  else if(a.editmeal){const prev=day().meals.find(x=>x.id===S.editMeal);if(prev)rememberMeal(prev);S.editMeal=S.editMeal===a.editmeal?null:a.editmeal;render()}
+  else if('medone' in a){const m=day().meals.find(x=>x.id===S.editMeal);if(m)rememberMeal(m);S.editMeal=null;render()}
   else if(a.setkcal){S.profile.kcalOverride=+a.setkcal;saveProfile();render()}
   else if(t.id==='mAdd'){const name=$('#mName').value.trim();const kcal=num($('#m_kcal').value);if(!name||kcal==null){($('#mName').value?$('#m_kcal'):$('#mName')).focus();return}
-    addMeal({name,kcal,p:num($('#m_p').value)||0,c:num($('#m_c').value)||0,f:num($('#m_f').value)||0,src:'manual'});render()}
+    const m={name,kcal,p:num($('#m_p').value)||0,c:num($('#m_c').value)||0,f:num($('#m_f').value)||0,qty:1,edited:true};rememberMeal(m);addMeal({...m,src:'manual'});render()}
   else if(t.id==='aiSave'){const key=$('#aiKey').value.trim(),model=$('#aiModel').value;saveAiCfg({key,model});initAI();$('#aiStat').innerHTML=key?'<span class="ok">บันทึกแล้ว</span>':'<span class="muted">ยังไม่ได้ตั้งค่า</span>'}
   else if(t.id==='aiDel'){saveAiCfg({});initAI();render()}
   else if(t.id==='aiTest'){const key=$('#aiKey').value.trim();if(!key){$('#aiKey').focus();return}saveAiCfg({key,model:$('#aiModel').value});initAI();
@@ -859,6 +1038,8 @@ app.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return
       .catch(e=>{st.innerHTML=`<span class="err">${esc(AI_ERR[e&&e.code]||'เชื่อมต่อไม่สำเร็จ')}${e&&e.message?' · '+esc(e.message):''}</span>`})}
   else if(t.id==='expBtn'){exportData().then(m=>{const b=$('#bkStat');if(b)b.textContent=m}).catch(()=>{const b=$('#bkStat');if(b)b.textContent='ส่งออกไม่สำเร็จ'})}
 });
+function ensureBase(m){if(!m.qty)m.qty=1;if(!m.base)m.base={kcal:(m.kcal||0)/m.qty,p:(m.p||0)/m.qty,c:(m.c||0)/m.qty,f:(m.f||0)/m.qty}}
+function setQty(m,q){ensureBase(m);m.qty=q;m.kcal=Math.round(m.base.kcal*q);m.p=+(m.base.p*q).toFixed(1);m.c=+(m.base.c*q).toFixed(1);m.f=+(m.base.f*q).toFixed(1)}
 function addMeal(m,noSave){const D=day();D.meals.push({id:uid(),slot:S.slot,name:m.name,kcal:+m.kcal||0,p:+m.p||0,c:+m.c||0,f:+m.f||0,src:m.src});if(!noSave){saveDay();if(S.view!=='food'||m.src!=='preset')render();else refreshFoodHead()}}
 function refreshFoodHead(){const y=window.scrollY;render();window.scrollTo(0,y)}
 app.addEventListener('submit',e=>{if(e.target.id==='quick'){e.preventDefault();submitText()}});
@@ -868,8 +1049,12 @@ app.addEventListener('input',e=>{const t=e.target;const D=day();
   else if(t.dataset.k&&t.closest('.set')){const row=t.closest('.set');const ex=row.dataset.ex,i=+row.dataset.i;let s=D.sets.find(x=>x.ex===ex&&x.i===i);
     if(!s){s={ex,i,w:null,r:null,done:false};D.sets.push(s)}s[t.dataset.k]=num(t.value);saveDay()}
   else if(t.dataset.cardio){D.cardio={...(D.cardio||{}),[t.dataset.cardio]:num(t.value)};saveDay()}
-  else if(t.dataset.me&&t.dataset.me!=='slot'){const m=D.meals.find(x=>x.id===t.dataset.mid);if(m){const k=t.dataset.me;m[k]=k==='name'?t.value:(num(t.value)||0);m.edited=true;saveDay();
-    if(k==='kcal'){const el=document.getElementById('k-'+m.id);if(el)el.textContent=Math.round(m.kcal)}}}
+  else if(t.id==='aiHint')updateSugg();
+  else if(t.dataset.me&&t.dataset.me!=='slot'){const m=D.meals.find(x=>x.id===t.dataset.mid);if(m){const k=t.dataset.me;ensureBase(m);
+    if(k==='name'){m.name=t.value;m.edited=true}
+    else if(k==='qty'){const v=num(t.value);if(v>0){setQty(m,v);['kcal','p','c','f'].forEach(x=>{const el=document.getElementById(`me-${x}-${m.id}`);if(el)el.value=x==='kcal'?Math.round(m.kcal):f1(m[x])})}}
+    else{const v=num(t.value)||0;m[k]=v;m.base[k]=+(v/(m.qty||1)).toFixed(2);m.edited=true}
+    saveDay();const el=document.getElementById('k-'+m.id);if(el)el.textContent=Math.round(m.kcal)}}
 });
 app.addEventListener('change',e=>{const t=e.target;
   if(t.id==='slot'){S.slot=t.value;const b=$('#aiAdd');if(b)b.textContent='บันทึกเข้า'+SLOTS[S.slot]}
