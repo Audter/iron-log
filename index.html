@@ -156,7 +156,8 @@ input::placeholder{color:var(--muted);opacity:.75}
 .ditem label{font-size:11px;color:var(--muted)}
 details summary{cursor:pointer;font-weight:600;list-style-position:inside}
 .err{color:var(--bad);font-size:14px}
-.ok{color:var(--good);font-size:14px}.ok b{font-family:var(--display);font-size:16px}
+.ok{color:var(--good);font-size:14px}
+.welcome{border-color:var(--accent);background:var(--accent-soft)}.ok b{font-family:var(--display);font-size:16px}
 .photo{justify-content:flex-start;text-align:left;padding:14px 16px}
 .photo small{display:block;font-size:12px;color:var(--muted);font-weight:400}
 .cam{width:38px;height:38px;border-radius:50%;background:var(--accent);flex:none;position:relative}
@@ -849,7 +850,12 @@ function viewToday(){const D=day(),T=targets(),tot=totals(D),ws=weights();const 
     train=`<div class="spread"><span><span class="disc ${P.plate}"></span> <b>${P.name}</b> <span class="muted small">${P.th}</span></span><span class="num">${done}/${total} เซ็ต</span></div>
     <div class="track"><div class="fill ${done>=total?'good':''}" style="width:${Math.min(100,done/total*100)}%"></div></div>`}
   const left=T.kcal-tot.kcal;
-  return `${header()}
+  const hasData=Object.values(S.days).some(d=>(d.meals&&d.meals.length)||(d.sets&&d.sets.length)||d.weight);
+  const welcome=hasData?'':`<section class="card welcome"><h2>ย้ายข้อมูลเดิมมาที่แอปนี้</h2>
+    <p class="small">แอปบน Home Screen เก็บข้อมูลแยกจาก Safari ถ้าเคย Export ไว้ (เช่น ใน Google Drive) นำเข้าได้เลย</p>
+    <div class="row"><label class="btn" for="impFile2">Import JSON</label><input type="file" id="impFile2" hidden></div>
+    <p class="small" id="bkStat2" role="status"></p></section>`;
+  return `${header()}${welcome}
   <section class="card"><div class="spread"><h2>พลังงานวันนี้</h2><span class="pill ${left<0?'bad':''}">${left>=0?'เหลือ '+Math.round(left):'เกิน '+Math.round(-left)} kcal</span></div>
     <div class="big" id="kcalBig">${Math.round(tot.kcal)}<small>/ ${T.kcal} kcal</small></div>
     ${meter('Protein',tot.p,T.protein,'g','protein')}${meter('Carb',tot.c,T.carb,'g')}${meter('Fat',tot.f,T.fat,'g')}
@@ -1010,7 +1016,7 @@ function settingsCards(){const c=aiCfg();const m=c.model||'claude-haiku-5-5';
     <p class="small" id="aiStat" role="status">${c.key?'<span class="ok">ตั้งค่าแล้ว</span>':'<span class="muted">ยังไม่ได้ตั้งค่า</span>'}</p>
     <p class="small muted">key เก็บในเครื่องนี้เท่านั้น และส่งตรงไปที่ api.anthropic.com · ค่าใช้จ่ายคิดตามการใช้งานใน Anthropic Console</p></section>
   <section class="card"><h2>สำรองข้อมูล</h2><p class="small muted">ข้อมูลทั้งหมดเก็บในเครื่องนี้ ควร export ไว้ใน Files หรือ iCloud Drive เป็นระยะ</p>
-    <div class="row"><button class="btn ghost" id="expBtn">Export JSON</button><label class="btn ghost" for="impFile">Import JSON</label><input type="file" id="impFile" accept="application/json,.json" hidden></div>
+    <div class="row"><button class="btn ghost" id="expBtn">Export JSON</button><label class="btn ghost" for="impFile">Import JSON</label><input type="file" id="impFile" hidden></div>
     <p class="small" id="bkStat" role="status"></p></section>`}
 async function exportData(){const data={app:'iron-log',version:1,exportedAt:new Date().toISOString(),profile:S.profile,days:S.days,myFoods:MYFOODS};
   const name=`iron-log-${today()}.json`;const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
@@ -1199,8 +1205,10 @@ app.addEventListener('change',e=>{const t=e.target;
   else if(t.id==='e1sel'){S.e1rmEx=t.value;render()}
   else if(t.id==='photo'){const f=t.files&&t.files[0];if(f&&sample){const h=$('#aiHint');const hint=(h&&h.value||'').trim();if(h)h.value='';t.value='';queueAI(f,hint)}}
   else if(t.dataset.me==='slot'){const m=day().meals.find(x=>x.id===t.dataset.mid);if(m){m.slot=t.value;saveDay();render()}}
-  else if(t.id==='impFile'){const f=t.files&&t.files[0];if(!f)return;f.text().then(txt=>{const n=importData(txt);render();const b=$('#bkStat');if(b)b.textContent=`นำเข้าแล้ว ${n} วัน`})
-    .catch(err=>{const b=$('#bkStat');if(b)b.textContent='นำเข้าไม่สำเร็จ: '+(err&&err.message||'ไฟล์ไม่ถูกต้อง')})}
+  else if(t.id==='impFile'||t.id==='impFile2'){const f=t.files&&t.files[0];if(!f)return;const sid=t.id==='impFile'?'#bkStat':'#bkStat2';
+    f.text().then(txt=>{let j;try{j=JSON.parse(txt)}catch(e){throw new Error('ไฟล์นี้ไม่ใช่ JSON ที่ export จาก Iron Log')}const n=importData(JSON.stringify(j));
+      S.aiErr='';S.aiMsg='';render();const b=$(sid)||$('#bkStat');if(b)b.textContent=`นำเข้าแล้ว ${n} วัน`;else{const h=$('#app');h.insertAdjacentHTML('afterbegin',`<p class="ok" role="status" style="text-align:center">นำเข้าแล้ว ${n} วัน ✓</p>`)}})
+    .catch(err=>{const b=$(sid);if(b)b.textContent='นำเข้าไม่สำเร็จ: '+(err&&err.message||'ไฟล์ไม่ถูกต้อง')}).finally(()=>{t.value=''})}
   else if(t.dataset.prof){const k=t.dataset.prof;const v=num(t.value);if(k==='kcalOverride')S.profile.kcalOverride=v&&v>=1000?Math.round(v):null;else if(v!=null)S.profile[k]=v;saveProfile();render()}
 });
 
