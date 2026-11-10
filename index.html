@@ -1017,7 +1017,10 @@ function settingsCards(){const c=aiCfg();const m=c.model||'claude-haiku-5-5';
     <p class="small muted">key เก็บในเครื่องนี้เท่านั้น และส่งตรงไปที่ api.anthropic.com · ค่าใช้จ่ายคิดตามการใช้งานใน Anthropic Console</p></section>
   <section class="card"><h2>สำรองข้อมูล</h2><p class="small muted">ข้อมูลทั้งหมดเก็บในเครื่องนี้ ควร export ไว้ใน Files หรือ iCloud Drive เป็นระยะ</p>
     <div class="row"><button class="btn ghost" id="expBtn">Export JSON</button><label class="btn ghost" for="impFile">Import JSON</label><input type="file" id="impFile" hidden></div>
-    <p class="small" id="bkStat" role="status"></p></section>`}
+    <p class="small" id="bkStat" role="status"></p></section>
+  <section class="card"><div class="spread"><h2>เวอร์ชันแอป</h2><span class="pill">v${APP_VERSION}</span></div>
+    <p class="small muted">ถ้าแอปยังไม่เปลี่ยนตามที่แก้ กดอัปเดต ข้อมูลของคุณไม่หาย</p>
+    <div class="row"><button class="btn ghost" id="updBtn">อัปเดตแอปตอนนี้</button></div><p class="small" id="updStat" role="status"></p></section>`}
 async function exportData(){const data={app:'iron-log',version:1,exportedAt:new Date().toISOString(),profile:S.profile,days:S.days,myFoods:MYFOODS};
   const name=`iron-log-${today()}.json`;const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
   try{const file=new File([blob],name,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return 'ส่งออกแล้ว'}}catch(e){if(e&&e.name==='AbortError')return ''}
@@ -1180,6 +1183,7 @@ app.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return
   else if(t.id==='aiTest'){const key=$('#aiKey').value.trim();if(!key){$('#aiKey').focus();return}saveAiCfg({key,model:$('#aiModel').value});initAI();
     const st=$('#aiStat');st.textContent='กำลังทดสอบ…';apiJSON('Reply with only this JSON: {"ok":true}').then(r=>{st.innerHTML=r&&r.ok?'<span class="ok">เชื่อมต่อได้ ✓</span>':'<span class="err">ตอบกลับผิดรูปแบบ</span>'})
       .catch(e=>{st.innerHTML=`<span class="err">${esc(AI_ERR[e&&e.code]||'เชื่อมต่อไม่สำเร็จ')}${e&&e.message?' · '+esc(e.message):''}</span>`})}
+  else if(t.id==='updBtn')forceUpdate();
   else if(t.id==='expBtn'){exportData().then(m=>{const b=$('#bkStat');if(b)b.textContent=m}).catch(()=>{const b=$('#bkStat');if(b)b.textContent='ส่งออกไม่สำเร็จ'})}
 });
 function ensureBase(m){if(!m.qty)m.qty=1;if(!m.base)m.base={kcal:(m.kcal||0)/m.qty,p:(m.p||0)/m.qty,c:(m.c||0)/m.qty,f:(m.f||0)/m.qty}}
@@ -1227,7 +1231,13 @@ $('#rest').addEventListener('click',e=>{const b=e.target.closest('[data-demo]');
 $('#restClose').addEventListener('click',()=>{clearInterval(restTick);$('#rest').hidden=true});
 
 boot();
-if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+const APP_VERSION='5 · 10 พ.ย. 2026';
+if('serviceWorker' in navigator)addEventListener('load',()=>{navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{
+  const upd=()=>reg.update().catch(()=>{});document.addEventListener('visibilitychange',()=>{if(!document.hidden)upd()});
+}).catch(()=>{})});
+async function forceUpdate(){const st=$('#updStat');if(st)st.textContent='กำลังอัปเดต…';
+  try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs)await r.unregister();const ks=await caches.keys();for(const k of ks)await caches.delete(k)}catch(e){}
+  location.replace(location.pathname+'?u='+Date.now())}
 </script>
 </body>
 </html>
